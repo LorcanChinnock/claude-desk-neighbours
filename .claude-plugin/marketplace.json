@@ -1,0 +1,12 @@
+{
+  "name": "lorcan-plugins",
+  "owner": {
+    "name": "Lorcan Chinnock",
+    "url": "https://github.com/LorcanChinnock"
+  },
+  "description": "Lorcan's Claude Code skills, hooks and mods",
+  "metadata": {
+    "pluginRoot": "./plugins"
+  },
+  "plugins": []
+}
