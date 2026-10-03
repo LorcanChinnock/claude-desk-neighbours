@@ -16,7 +16,8 @@ const TITLE = '🎾 Your Serve'
 // Previously On 0. The pane uses the same digits, so an answer has one key everywhere.
 const HOTKEYS = ['1', '2', '3'] as const
 const TAIL = 400
-const MAX_QUESTIONS = 4
+// How much of the reply's end Haiku reads: room for a long list of questions with their context.
+const READ = 4000
 
 // Cheap gate on the answer's ending: a question mark, an options list, or asking phrasing.
 const ASKING = /\b(should i|shall i|would you like|do you want|want me to|which (one|option|approach|of these|would)|or should|let me know (if|whether|which))\b/i
@@ -26,7 +27,7 @@ const EXTRACT_SYSTEM = [
   "You read the end of a coding assistant's reply and decide whether it is waiting on the user for",
   'an answer or a decision before it can go on. Reply with JSON only:',
   '{"needsInput": boolean, "questions": [{"question": string, "options": [{"label": string, "reply": string}]}]}.',
-  `"questions": each separate thing the user must answer, in the order the reply asks them, at most ${MAX_QUESTIONS};`,
+  `"questions": each separate thing the user must answer, in the order the reply asks them;`,
   'alternatives for the same decision are one question with options, never separate questions.',
   '"question": one thing the user must answer, at most 80 characters, ending in "?", naming what',
   'is being decided ("Keep the old cache or drop it?"), never only option numbers ("1, 2 or 3?").',
@@ -65,7 +66,6 @@ export function toServe(verdict: Record<string, unknown> | null): Serve | null {
   for (const one of verdict.questions) {
     const asked = toQuestion(one)
     if (asked !== null) questions.push(asked)
-    if (questions.length === MAX_QUESTIONS) break
   }
   return questions.length === 0 ? null : { questions, answers: [] }
 }
@@ -95,10 +95,10 @@ async function readServe($: EngineInterface, answer: string, durationMs: number,
   const reply = await $.model.complete({
     model: 'haiku',
     effort: 'low',
-    maxTokens: 800,
+    maxTokens: 2000,
     timeoutMs: 15000,
     system: EXTRACT_SYSTEM,
-    prompt: `End of the reply:\n"""\n${answer.slice(-1500)}\n"""`,
+    prompt: `End of the reply:\n"""\n${answer.slice(-READ)}\n"""`,
   })
   if (!reply.isAnswered || asked !== generation) return
   const next = toServe(parseJson(reply.text))
@@ -106,7 +106,8 @@ async function readServe($: EngineInterface, answer: string, durationMs: number,
   await $.state.set(SERVE, next)
   const at = await $.clock.now()
   const entries: ServeAsked[] = next.questions.map(({ question }) => ({ question, at }))
-  await update($, history, list => [...entries, ...list].slice(0, 6))
+  // However many this turn asked, the pane still lists the six asked before them.
+  await update($, history, list => [...entries, ...list].slice(0, entries.length + 6))
   if (durationMs > toastAfterMs) {
     $.ui.toast('🎾 Claude needs a decision')
     if (shouldSpeak) await $.audio.speak('Claude needs a decision').catch(() => undefined)

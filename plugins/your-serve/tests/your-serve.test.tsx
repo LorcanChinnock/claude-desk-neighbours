@@ -74,9 +74,10 @@ test('the question and answer labels show whole, up to 200 and 40 characters', (
   expect(long?.questions[0]?.options[0]?.label).toHaveLength(40)
 })
 
-test('several questions are kept in order, at most four, and empty ones dropped', () => {
-  const questions = ['A?', '', 'B?', 'C?', 'D?', 'E?'].map(question => ({ question, options: [] }))
-  expect(toServe({ needsInput: true, questions })?.questions.map(q => q.question)).toEqual(['A?', 'B?', 'C?', 'D?'])
+test('every question is kept in order, however many, and empty ones dropped', () => {
+  const asked = ['A?', 'B?', 'C?', 'D?', 'E?', 'F?', 'G?', 'H?', 'I?', 'J?']
+  const questions = ['', ...asked].map(question => ({ question, options: [] }))
+  expect(toServe({ needsInput: true, questions })?.questions.map(q => q.question)).toEqual(asked)
   expect(toServe({ needsInput: true, questions: [] })).toBeNull()
   expect(toServe({ needsInput: false, questions })).toBeNull()
 })
