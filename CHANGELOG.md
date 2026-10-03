@@ -1,5 +1,12 @@
 # Changelog
 
+## [0.7.1](https://github.com/LorcanChinnock/claude-desk-neighbours/compare/v0.7.0...v0.7.1) (2026-10-03)
+
+
+### Bug Fixes
+
+* **closing-time:** make /ship work and fix what the first live runs found ([#20](https://github.com/LorcanChinnock/claude-desk-neighbours/issues/20)) ([efbb29f](https://github.com/LorcanChinnock/claude-desk-neighbours/commit/efbb29f3c59e369c0a5a9c04f07365d0cc0cbec7))
+
 ## [0.7.0](https://github.com/LorcanChinnock/claude-desk-neighbours/compare/v0.6.0...v0.7.0) (2026-10-03)
 
 
