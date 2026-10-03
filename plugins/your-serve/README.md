@@ -20,6 +20,23 @@ Pressing an answer puts a natural reply in your prompt ("Drop the old cache.") f
 digit into an empty prompt, or click it. With no clear options, the line shows just the question. It stays until
 you send a prompt. Answers that are statements produce nothing, and subagents' turns are ignored.
 
+When Claude asks several things at once, the line asks them one at a time, up to four:
+
+```
+🎾 Your serve (2/3): What should the new timeout be?          1: 30s  2: 60s  skip
+```
+
+Each answer moves to the next question, and the last one puts them all in your prompt as one reply:
+
+```
+1. Keep the old cache or drop it? Drop the old cache.
+2. What should the new timeout be? Make it 30 seconds.
+3. Add a retry? Yes, add a retry.
+```
+
+A question you skip (or one with no clear options) is left without an answer, for you to type after it before
+sending. Click `skip`: the digits after 3 belong to the other Desk Neighbours.
+
 The line wraps rather than cutting anything off: when the question and its answers don't fit on one line, the
 answers move to the next. At most three answers get buttons; for any other answer, type it.
 
@@ -45,4 +62,4 @@ questions Claude asked earlier this session.
 ## In the background
 
 Only answers whose ending has a question mark, an options list or asking phrasing are sent to Haiku, which picks out
-the question and up to three answers.
+its questions (up to four) and up to three answers for each.

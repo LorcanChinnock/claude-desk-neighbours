@@ -1,7 +1,7 @@
 import { atom, read, update } from 'claude-code'
 import type { EngineInterface, Register, RenderElement, RenderNode } from 'claude-code'
 
-import type { Serve, ServeAsked, ServeOption } from '../types'
+import type { Serve, ServeAsked, ServeOption, ServeQuestion } from '../types'
 
 const SERVE = { plugin: 'your-serve', key: 'serve' } as const
 const HISTORY = { plugin: 'your-serve', key: 'history' } as const
@@ -16,6 +16,7 @@ const TITLE = '🎾 Your Serve'
 // Previously On 0. The pane uses the same digits, so an answer has one key everywhere.
 const HOTKEYS = ['1', '2', '3'] as const
 const TAIL = 400
+const MAX_QUESTIONS = 4
 
 // Cheap gate on the answer's ending: a question mark, an options list, or asking phrasing.
 const ASKING = /\b(should i|shall i|would you like|do you want|want me to|which (one|option|approach|of these|would)|or should|let me know (if|whether|which))\b/i
@@ -24,8 +25,10 @@ const OPTIONS_LIST = /^\s*(?:[-*]\s*)?(?:\*\*)?(?:\(?[1-3a-c][.)]|option [1-3a-c
 const EXTRACT_SYSTEM = [
   "You read the end of a coding assistant's reply and decide whether it is waiting on the user for",
   'an answer or a decision before it can go on. Reply with JSON only:',
-  '{"needsInput": boolean, "question": string, "options": [{"label": string, "reply": string}]}.',
-  '"question": the single thing the user must answer, at most 80 characters, ending in "?", naming what',
+  '{"needsInput": boolean, "questions": [{"question": string, "options": [{"label": string, "reply": string}]}]}.',
+  `"questions": each separate thing the user must answer, in the order the reply asks them, at most ${MAX_QUESTIONS};`,
+  'alternatives for the same decision are one question with options, never separate questions.',
+  '"question": one thing the user must answer, at most 80 characters, ending in "?", naming what',
   'is being decided ("Keep the old cache or drop it?"), never only option numbers ("1, 2 or 3?").',
   '"options": at most 3 distinct answers the reply offers; "label" at most 14 characters naming the',
   'choice itself ("Keep", "Cap at 30s"), never only its number ("Option 1");',
@@ -57,7 +60,20 @@ function clip(text: string, max: number): string {
 }
 
 export function toServe(verdict: Record<string, unknown> | null): Serve | null {
-  if (verdict === null || verdict.needsInput !== true || typeof verdict.question !== 'string') return null
+  if (verdict === null || verdict.needsInput !== true || !Array.isArray(verdict.questions)) return null
+  const questions: ServeQuestion[] = []
+  for (const one of verdict.questions) {
+    const asked = toQuestion(one)
+    if (asked !== null) questions.push(asked)
+    if (questions.length === MAX_QUESTIONS) break
+  }
+  return questions.length === 0 ? null : { questions, answers: [] }
+}
+
+function toQuestion(item: unknown): ServeQuestion | null {
+  if (typeof item !== 'object' || item === null) return null
+  const verdict = item as Record<string, unknown>
+  if (typeof verdict.question !== 'string') return null
   const question = clip(verdict.question, 200)
   if (question === '') return null
   const raw = Array.isArray(verdict.options) ? verdict.options : []
@@ -79,7 +95,7 @@ async function readServe($: EngineInterface, answer: string, durationMs: number,
   const reply = await $.model.complete({
     model: 'haiku',
     effort: 'low',
-    maxTokens: 300,
+    maxTokens: 800,
     timeoutMs: 15000,
     system: EXTRACT_SYSTEM,
     prompt: `End of the reply:\n"""\n${answer.slice(-1500)}\n"""`,
@@ -88,8 +104,9 @@ async function readServe($: EngineInterface, answer: string, durationMs: number,
   const next = toServe(parseJson(reply.text))
   if (next === null) return
   await $.state.set(SERVE, next)
-  const entry: ServeAsked = { question: next.question, at: await $.clock.now() }
-  await update($, history, list => [entry, ...list].slice(0, 6))
+  const at = await $.clock.now()
+  const entries: ServeAsked[] = next.questions.map(({ question }) => ({ question, at }))
+  await update($, history, list => [...entries, ...list].slice(0, 6))
   if (durationMs > toastAfterMs) {
     $.ui.toast('🎾 Claude needs a decision')
     if (shouldSpeak) await $.audio.speak('Claude needs a decision').catch(() => undefined)
@@ -103,14 +120,40 @@ async function propose($: EngineInterface, text: string): Promise<void> {
     await $.prompt.fill({ text, mode: 'replace' })
     return
   }
-  const gap = /\s$/.test(box.text) ? '' : ' '
+  const gap = text.includes('\n') ? '\n\n' : /\s$/.test(box.text) ? '' : ' '
   await $.prompt.fill({ text: `${gap}${text}`, mode: 'append' })
 }
 
-/** An option pressed in the pane: the pane gets out of the way, then the prompt takes the reply. */
-async function answerFromPane($: EngineInterface, reply: string): Promise<void> {
-  await $.ui.close({ id: PANE })
-  await propose($, reply)
+/** The question waiting on an answer, or null once every question has one. */
+export function currentStep(shown: Serve): { step: number; asked: ServeQuestion } | null {
+  const step = shown.answers.length
+  const asked = shown.questions[step]
+  return asked === undefined ? null : { step, asked }
+}
+
+/** Every question with its answer, one per line; a skipped one is left for the person to type after. */
+export function formatAnswers(shown: Serve): string {
+  return shown.questions.map((asked, index) => `${index + 1}. ${asked.question} ${shown.answers[index] ?? ''}`.trimEnd()).join('\n')
+}
+
+/**
+ * An answer pressed in the band or the pane. One question puts its reply straight in the prompt, as it always
+ * has. Several are asked one at a time, and the last answer puts them all in the prompt as one reply.
+ * `reply` is null for a skipped question. From the pane, the pane gets out of the way before the prompt fills.
+ */
+async function choose($: EngineInterface, reply: string | null, isFromPane: boolean): Promise<void> {
+  const shown = await read($, serve)
+  if (shown === null || currentStep(shown) === null) return
+  if (shown.questions.length === 1) {
+    if (isFromPane) await $.ui.close({ id: PANE })
+    await propose($, reply ?? '')
+    return
+  }
+  const next: Serve = { ...shown, answers: [...shown.answers, reply] }
+  await $.state.set(SERVE, next)
+  if (currentStep(next) !== null) return
+  if (isFromPane) await $.ui.close({ id: PANE })
+  await propose($, formatAnswers(next))
 }
 
 async function clear($: EngineInterface): Promise<void> {
@@ -204,24 +247,33 @@ export const register: Register = (on, options) => {
     if (shown === null) return next(e)
     const below = await next(e)
     const { Box, Text, Button } = $.ui.resolve(e)
+    const current = currentStep(shown)
+    const count = shown.questions.length
+    const isMany = count > 1
+    const line =
+      current === null
+        ? `🎾 Your serve: all ${count} answers are in your prompt`
+        : `🎾 Your serve${isMany ? ` (${current.step + 1}/${count})` : ''}: ${current.asked.question}`
     return (
       <Box flexDirection="column">
         {/* Wraps rather than truncates: answers you can't read are no use. */}
         <Box flexDirection="row" flexWrap="wrap" columnGap={2} width={e.props.bodyColumns - MARKER}>
           <Box flexShrink={1}>
-            <Text>🎾 Your serve: {shown.question}</Text>
+            <Text>{line}</Text>
           </Box>
-          {shown.options.length > 0 && (
+          {current !== null && (current.asked.options.length > 0 || isMany) && (
             <Box flexShrink={0} flexWrap="wrap" gap={1}>
-              {shown.options.map((option, index) => (
+              {current.asked.options.map((option, index) => (
                 <Button
                   key={`serve-${index + 1}`}
                   hotkey={HOTKEYS[index]}
                   plain
                   label={option.label}
-                  onPress={() => void propose($, option.reply)}
+                  onPress={() => void choose($, option.reply, false)}
                 />
               ))}
+              {/* No digit left to spare: a skipped question is answered by typing in the prompt at the end. */}
+              {isMany && <Button key="serve-skip" plain dimColor label="skip" onPress={() => void choose($, null, false)} />}
             </Box>
           )}
         </Box>
@@ -246,27 +298,52 @@ export const register: Register = (on, options) => {
   on('ui.render', { component: 'Pane', requestId: PANE }, async ($, e) => {
     const { Box, Text, Button } = $.ui.resolve(e)
     const shown = await read($, serve)
-    const earlier = (await read($, history)).filter(asked => asked.question !== shown?.question)
+    const waiting = new Set(shown?.questions.map(asked => asked.question))
+    const earlier = (await read($, history)).filter(asked => !waiting.has(asked.question))
+    const current = shown === null ? null : currentStep(shown)
+    const isMany = shown !== null && shown.questions.length > 1
     const toast = `toast after ${Math.round(toastAfterMs / 1000)}s · voice ${shouldSpeak ? 'on' : 'off'}`
     return (
       <Box flexDirection="column">
         <Box flexDirection="row" marginBottom={1}>
           <Text bold>🎾 Your Serve</Text>
-          <Text dimColor> · {shown === null ? 'nothing waiting on you' : 'waiting on you'}</Text>
+          <Text dimColor> · {shown === null ? 'nothing waiting on you' : current === null ? 'answers in your prompt' : 'waiting on you'}</Text>
         </Box>
-        {shown !== null && <Text>{shown.question}</Text>}
-        {shown !== null && shown.options.length > 0 && (
+        {shown !== null &&
+          isMany &&
+          shown.answers.map((reply, index) => (
+            <Text dimColor>
+              {index + 1}. {shown.questions[index]?.question} {reply ?? '(skipped, type it in the prompt)'}
+            </Text>
+          ))}
+        {current !== null && (
+          <Text>
+            {isMany ? `${current.step + 1}. ` : ''}
+            {current.asked.question}
+          </Text>
+        )}
+        {current !== null && (current.asked.options.length > 0 || isMany) && (
           <Box flexDirection="row" gap={1} marginTop={1}>
-            {shown.options.map((option, index) => (
+            {current.asked.options.map((option, index) => (
               <Button
                 key={`pane-serve-${index + 1}`}
                 hotkey={HOTKEYS[index]}
                 plain
                 label={option.label}
                 autoFocus={index === 0 ? true : undefined}
-                onPress={() => void answerFromPane($, option.reply)}
+                onPress={() => void choose($, option.reply, true)}
               />
             ))}
+            {isMany && (
+              <Button
+                key="pane-serve-skip"
+                plain
+                dimColor
+                label="skip"
+                autoFocus={current.asked.options.length === 0 ? true : undefined}
+                onPress={() => void choose($, null, true)}
+              />
+            )}
           </Box>
         )}
         {earlier.length > 0 && (
