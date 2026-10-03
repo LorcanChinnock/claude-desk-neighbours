@@ -1,0 +1,61 @@
+{
+  "name": "closing-time",
+  "version": "0.6.0",
+  "description": "🔔 Closes the PR loop: watches a PR until CI and agent reviews are green, and weighs review comments before acting on them.",
+  "author": {
+    "name": "Lorcan Chinnock",
+    "url": "https://github.com/LorcanChinnock"
+  },
+  "types": "./types/index.d.ts",
+  "userConfig": {
+    "watchNewPrs": {
+      "type": "boolean",
+      "title": "Watch new PRs",
+      "description": "Start watching any PR Claude raises with gh pr create, not only ones raised with /ship.",
+      "default": true
+    },
+    "reviewers": {
+      "type": "string",
+      "title": "Agent reviewers",
+      "description": "Comma-separated bot logins whose reviews must be green (e.g. copilot-pull-request-reviewer, coderabbitai). Empty means every bot that reviews the PR.",
+      "default": ""
+    },
+    "postReplies": {
+      "type": "string",
+      "title": "Post replies",
+      "description": "ask: drafted thread replies wait for you to press Post. auto: they are posted as soon as they are drafted.",
+      "options": ["ask", "auto"],
+      "default": "ask"
+    },
+    "rerunFlaky": {
+      "type": "boolean",
+      "title": "Rerun flaky checks",
+      "description": "Rerun a failed Actions job once when its log looks like an infrastructure flake rather than the code.",
+      "default": true
+    },
+    "maxCiAttempts": {
+      "type": "number",
+      "title": "Fix attempts per check",
+      "description": "How many times Claude is asked to fix one failing check before it is handed to you.",
+      "default": 2
+    },
+    "maxRounds": {
+      "type": "number",
+      "title": "Review rounds",
+      "description": "How many rounds of review fixes before it is handed to you.",
+      "default": 3
+    },
+    "reviewerTimeoutMinutes": {
+      "type": "number",
+      "title": "Reviewer wait (minutes)",
+      "description": "How long to wait for a bot to review the latest commit before counting its earlier review as stale.",
+      "default": 15
+    },
+    "idleTimeoutMinutes": {
+      "type": "number",
+      "title": "Give up after (minutes)",
+      "description": "Stop watching when nothing has moved for this long.",
+      "default": 60
+    }
+  }
+}

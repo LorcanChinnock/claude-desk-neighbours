@@ -38,6 +38,11 @@
       "name": "show-and-tell",
       "source": "show-and-tell",
       "description": "📸 Shows you the pictures: a thumbnail the moment you paste one, and /gallery of every image you and Claude passed around this session."
+    },
+    {
+      "name": "closing-time",
+      "source": "closing-time",
+      "description": "🔔 Closes the PR loop: watches a PR until CI and agent reviews are green, and weighs review comments before acting on them."
     }
   ]
 }

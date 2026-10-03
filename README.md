@@ -14,13 +14,14 @@
   <a href="#-receipts">🧾 Receipts</a> ·
   <a href="#-shrink-ray">🔫 Shrink Ray</a> ·
   <a href="#-previously-on">📺 Previously On</a> ·
-  <a href="#-show--tell">📸 Show & Tell</a>
+  <a href="#-show--tell">📸 Show & Tell</a> ·
+  <a href="#-closing-time">🔔 Closing Time</a>
 </p>
 
 Claude Code does the actual work well. It's the stuff around the work that slips. You correct it and it's
 forgotten by the next session. It asks you something in the last line of a long reply. It says "fixed!" without
 running anything, reads a 1,200-line log in full, and has no way to catch you up when you come back from lunch.
-**Desk Neighbours** are six small mods, one for each of those. They sit in a status row under your prompt and
+**Desk Neighbours** are seven small mods, one for each of those. They sit in a status row under your prompt and
 only pipe up, in a single line above it, when there's something worth saying.
 
 ```
@@ -37,6 +38,7 @@ than one:
 /plugin install shrink-ray@claude-desk-neighbours
 /plugin install previously-on@claude-desk-neighbours
 /plugin install show-and-tell@claude-desk-neighbours
+/plugin install closing-time@claude-desk-neighbours
 ```
 
 ---
@@ -142,6 +144,22 @@ than one:
 
 [Everything Show & Tell does →](plugins/show-and-tell)
 
+## 🔔 Closing Time
+
+**Watches a PR until CI passes and the agent reviewers are happy, and pushes back on review comments that are wrong.**
+
+- `/ship` gets Claude to raise the PR, and Closing Time watches it from then on. It picks up any other PR Claude
+  raises with `gh pr create` too, and `/closing-time watch 123` watches one that already exists.
+- When CI fails, Claude gets the failing checks and the end of their logs once they've all finished, and is told to
+  fix the cause rather than weaken the check. A job whose log looks like a flake is rerun once instead.
+- Each bot review comment goes to a read-only triage agent first. It checks the claim against the code and
+  accepts, declines or hands it to you, with evidence. Claude only gets the accepted ones, and comment text always
+  reaches it as quoted data.
+- Replies to declined and fixed comments are drafted, and none are posted until you press Post. It hands over to
+  you after 2 failed fixes on one check or 3 rounds of review fixes, and it never merges.
+
+[Everything Closing Time does →](plugins/closing-time)
+
 ---
 
 ## How they work together
@@ -150,7 +168,7 @@ There's a status row under the prompt with one item for each neighbour you've in
 order. Click an item, or run its command, to open its pane. Open a few and they turn into tabs. Esc closes a pane.
 
 ```
-? for shortcuts   😤 3 grudges  🎾 ready  🧾 2 unchecked  🔫 12.4k deflected  📺 on air  📸 4
+? for shortcuts   😤 3 grudges  🎾 ready  🧾 2 unchecked  🔫 12.4k deflected  📺 on air  📸 4  🔔 #42 CI 3/5 · reviews 1/2
 ```
 
 When a neighbour has something to tell you, it gets a line in the band above the prompt. Your Serve always goes
@@ -160,8 +178,8 @@ on top, and long lines wrap instead of getting cut off:
 
 Buttons never send anything. They put text in your prompt so you can read it, change it and send it yourself.
 To press one, type its digit into an empty prompt or click it. If there's already text in the prompt, press
-`ctrl+x tab` first. Each neighbour has its own digits, so they never clash. Show & Tell's band buttons don't have
-digits, so either click them or open the gallery and use its letter keys:
+`ctrl+x tab` first. Each neighbour has its own digits, so they never clash. Show & Tell's and Closing Time's band
+buttons don't have digits, so either click them or open their pane and use its letter keys:
 
 | Your Serve | Grudge | Receipts | Shrink Ray | Previously On |
 |---|---|---|---|---|
@@ -179,6 +197,12 @@ You can change these in `/config`, or with `/plugin configure <plugin>@claude-de
 | `your-serve` | Also say "Claude needs a decision" out loud (macOS) | off |
 | `previously-on` | Recap after this many idle minutes | 20 |
 | `show-and-tell` | Keep new thumbnails above the prompt for (seconds) | 20 |
+| `closing-time` | Watch any PR Claude raises, not only ones from `/ship` | on |
+| `closing-time` | Agent reviewers (comma-separated logins; empty means any bot that reviews) | empty |
+| `closing-time` | Post thread replies: `ask` waits for you to press Post, `auto` posts them | `ask` |
+| `closing-time` | Rerun a job once when its log looks like a flake | on |
+| `closing-time` | Fix attempts per check / review rounds before handing over to you | 2 / 3 |
+| `closing-time` | Minutes to wait for a bot review / with no change before it stops watching | 15 / 60 |
 
 ## What runs in the background
 
@@ -188,7 +212,11 @@ Here's what goes on behind the scenes, so you know before you install:
   model (Haiku): is this a lasting correction, what is Claude asking, is this answer claiming it's done, what was
   this session about. Each call only happens after a cheap local check passes, so most turns don't make any.
   Previously On's recap re-reads the session transcript once each time you come back, mostly from the prompt
-  cache.
+  cache. Closing Time asks Haiku whether a failed CI log looks like a flake, and starts one read-only triage
+  subagent on your session's model for each bot review comment.
+- **GitHub, through `gh`.** Closing Time runs `gh` with your login while it watches a PR: a GraphQL query on
+  each check, the PR diff and failed job logs when there's something to look at, and reruns of flaky jobs. It only
+  posts replies to review threads when you press Post (or if you've set it to `auto`).
 - **Files on disk.** Shrink Ray saves full originals in `~/.claude/shrink-ray/` so Claude can read them if it
   needs to. Show & Tell keeps copies of pasted and tool images in `~/.claude/show-and-tell/`, and uses `cp`,
   `sips` or `magick` to copy and convert them. Both delete files older than seven days when a session starts
