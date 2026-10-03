@@ -20,7 +20,7 @@ Pressing an answer puts a natural reply in your prompt ("Drop the old cache.") f
 digit into an empty prompt, or click it. With no clear options, the line shows just the question. It stays until
 you send a prompt. Answers that are statements produce nothing, and subagents' turns are ignored.
 
-When Claude asks several things at once, the line asks them one at a time, up to four:
+When Claude asks several things at once, the line asks them one at a time, however many there are:
 
 ```
 🎾 Your serve (2/3): What should the new timeout be?          1: 30s  2: 60s  skip
@@ -62,4 +62,4 @@ questions Claude asked earlier this session.
 ## In the background
 
 Only answers whose ending has a question mark, an options list or asking phrasing are sent to Haiku, which picks out
-its questions (up to four) and up to three answers for each.
+every question and up to three answers for each.
