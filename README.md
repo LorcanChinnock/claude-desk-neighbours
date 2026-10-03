@@ -148,6 +148,8 @@ than one:
 
 **Watches a PR until CI passes and the agent reviewers are happy, and pushes back on review comments that are wrong.**
 
+![/ship raises the PR; CI fails and Claude fixes it; a bot leaves three comments; triage accepts one and declines two; the replies are posted and the PR goes green](docs/screenshots/closing-time.gif)
+
 - `/ship` gets Claude to raise the PR, and Closing Time watches it from then on. It picks up any other PR Claude
   raises with `gh pr create` too, and `/closing-time watch 123` watches one that already exists.
 - When CI fails, Claude gets the failing checks and the end of their logs once they've all finished, and is told to

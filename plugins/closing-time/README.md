@@ -2,6 +2,8 @@
 
 Watches a PR until CI passes and the agent reviewers are happy, and pushes back on review comments that are wrong.
 
+![/ship raises the PR; CI fails and Claude fixes it; a bot leaves three comments; triage accepts one real bug and declines a rename and a jitter suggestion; the replies are posted and the PR goes green](../../docs/screenshots/closing-time.gif)
+
 ```
 /plugin install closing-time@claude-desk-neighbours
 ```
@@ -73,6 +75,8 @@ run `/closing-time`. It lists the checks, the agent reviewers, every bot comment
 draft reply, and comments from people. **Flip** overrides a verdict: an accepted comment becomes declined, and
 anything else becomes accepted and goes to Claude. If every comment so far went the same way, the pane points it
 out, since either all the comments were right or the triage wasn't really looking.
+
+![The Closing Time pane on a green PR: both checks passed after one fix, the bot reviewed the latest commit, and all three comments were declined with reasons and replies posted, with a hint that every verdict went the same way](../../docs/screenshots/closing-time-pane.png)
 
 `p` posts the drafts, `d` discards them, and `s` stops watching. `/closing-time stop` stops watching too. The band
 buttons have no digit keys, because the other neighbours already use all ten, so click them or use the pane.
