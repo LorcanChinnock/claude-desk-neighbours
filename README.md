@@ -1,5 +1,5 @@
 <p align="center">
-  <img src="docs/logo.png" width="760" alt="Desk Neighbours: six small colleagues for your Claude Code terminal. Grudge remembers, Your Serve nudges you, Receipts checks claims, Shrink Ray trims noise, Previously On catches you up, Show & Tell shows you.">
+  <img src="docs/logo.png" width="760" alt="Desk Neighbours: seven small colleagues for your Claude Code terminal. Grudge remembers, Your Serve nudges you, Receipts checks claims, Shrink Ray trims noise, Previously On catches you up, Show & Tell shows you, Closing Time closes the PR.">
 </p>
 
 <p align="center">
@@ -147,6 +147,8 @@ than one:
 ## 🔔 Closing Time
 
 **Watches a PR until CI passes and the agent reviewers are happy, and pushes back on review comments that are wrong.**
+
+![/ship raises the PR; CI fails and Claude fixes it; a bot leaves three comments; triage accepts one and declines two; the replies are posted and the PR goes green](docs/screenshots/closing-time.gif)
 
 - `/ship` gets Claude to raise the PR, and Closing Time watches it from then on. It picks up any other PR Claude
   raises with `gh pr create` too, and `/closing-time watch 123` watches one that already exists.
