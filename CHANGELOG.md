@@ -1,5 +1,11 @@
 # Changelog
 
+## Unreleased
+
+- New neighbour, 📸 Show & Tell: a thumbnail above the prompt the moment you paste an image, and `/gallery` of
+  every image you pasted and Claude read or made this session. Pictures draw in Ghostty and kitty; elsewhere the
+  same rows show in words. Images are kept for seven days.
+
 ## 0.2.1
 
 Desk Neighbours:
