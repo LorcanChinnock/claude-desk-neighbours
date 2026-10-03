@@ -1,5 +1,5 @@
 <p align="center">
-  <img src="docs/logo.png" width="760" alt="Desk Neighbours: six small colleagues for your Claude Code terminal. Grudge remembers, Your Serve nudges you, Receipts checks claims, Shrink Ray trims noise, Previously On catches you up, Show & Tell shows you.">
+  <img src="docs/logo.png" width="760" alt="Desk Neighbours: seven small colleagues for your Claude Code terminal. Grudge remembers, Your Serve nudges you, Receipts checks claims, Shrink Ray trims noise, Previously On catches you up, Show & Tell shows you, Closing Time closes the PR.">
 </p>
 
 <p align="center">
