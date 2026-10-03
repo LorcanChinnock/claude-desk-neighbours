@@ -45,12 +45,23 @@ on it. Open several and they become tabs. Esc closes a pane.
 **The band** above the prompt, only when a neighbour has something to say. One line each, Your Serve on top:
 
 ```
-🎾 Your serve: Keep the old cache or drop it?            a: Keep  b: Drop
-🧾 No receipt: nothing ran since edit to src/auth.ts      r: Run them
+🎾 Your serve: Keep the old cache or drop it?            1: Keep  2: Drop
+🧾 No receipt: nothing ran since edit to src/auth.ts      6: Run them
 ```
 
+All five in a real session, with Your Serve and Previously On both in the band:
+
+![Claude Code with all five neighbours: a Your Serve question and a Previously On recap above the prompt, the status row below](docs/screenshots/previously-recap.png)
+
 Band buttons never send anything. They put text in your prompt for you to read, edit and send yourself.
-To press one from the keyboard, focus the band with `ctrl+x tab`, then press its letter. A click works too.
+To press one from the keyboard, type its digit into an empty prompt. With text in the prompt a digit just
+types, so focus the band with `ctrl+x tab` first. A click works too. Each neighbour has its own digits, so they
+never clash:
+
+| Your Serve | Grudge | Receipts | Shrink Ray | Previously On |
+|---|---|---|---|---|
+| `1` `2` `3` | `4` `5` | `6` `7` `8` | `9` | `0` |
+
 Lines clear when you send your next prompt.
 
 ### Settings

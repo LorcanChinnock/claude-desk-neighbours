@@ -83,6 +83,7 @@ test('the first keystroke after twenty idle minutes shows the recap, made once',
   }
 
   const ui = await $.ui.mount({ plugin: 'previously-on', surface: 'terminal', ...BAND })
+  expect((await ui.find({ key: 'previously-dismiss' }))?.props.hotkey).toBe('0')
   await ui.press({ key: 'previously-dismiss' })
   expect(await ui.find({ type: 'Text' })).toBeUndefined()
 

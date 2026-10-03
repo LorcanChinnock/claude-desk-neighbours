@@ -87,6 +87,8 @@ test('a claim with nothing run since the edit gets a footer and a band', async (
     await ui.unmount()
   }
   const ui = await $.ui.mount({ plugin: 'receipts', surface: 'terminal', ...BAND })
+  expect((await ui.find({ key: 'receipts-run' }))?.props.hotkey).toBe('6')
+  expect((await ui.find({ key: 'receipts-sweep' }))?.props.hotkey).toBe('7')
   await ui.press({ key: 'receipts-sweep' })
   expect(w.box.text).toBe('Remove these leftovers: console.log in src/auth.ts:2.')
 })
@@ -127,6 +129,7 @@ test('the second missing receipt offers to make it a rule', async ($, on) => {
     await $.turn.complete(finish('Done, it works now.'))
   }
   const ui = await $.ui.mount({ plugin: 'receipts', surface: 'terminal', ...BAND })
+  expect((await ui.find({ key: 'receipts-rule' }))?.props.hotkey).toBe('8')
   await ui.press({ key: 'receipts-rule' })
   expect(w.box.text).toBe('From now on, always run `pnpm test` before saying something is done.')
 

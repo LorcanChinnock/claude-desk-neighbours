@@ -373,8 +373,9 @@ export const register: Register = on => {
               🔫 Shrunk {grouped(held.before)} → {grouped(held.after)} lines
             </Text>
           </Box>
+          {/* Digits press from an empty prompt; the Desk Neighbours split them so none clash (Shrink Ray 9). */}
           <Box flexShrink={0} marginLeft={2}>
-            <Button key="shrink-undo" hotkey="u" plain label="Undo" onPress={() => void undoPaste($)} />
+            <Button key="shrink-undo" hotkey="9" plain label="Undo" onPress={() => void undoPaste($)} />
           </Box>
         </Box>
       </Box>

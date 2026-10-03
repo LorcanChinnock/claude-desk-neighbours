@@ -12,11 +12,13 @@ Remembers your corrections, so you only say "no, use pnpm" once.
   "don't use default exports", "always use the logger, not console"), the band offers, while Claude works:
 
   ```
-  😤 Hold a grudge? "use pnpm, not npm"                      g: Hold  n: Nah
+  😤 Hold a grudge? "use pnpm, not npm"                      4: Hold  5: Nah
   ```
 
-  Nothing is remembered unless you press Hold. One-off fixes ("that's the wrong file") don't get an offer.
-  An ignored offer fades when you send your next prompt.
+  Nothing is remembered unless you press Hold: type `4` into an empty prompt, or click it. One-off fixes
+  ("that's the wrong file") don't get an offer. An ignored offer fades when you send your next prompt.
+
+  ![Grudge offering to hold "Use debug package logger instead of console.log" while Claude works](../../docs/screenshots/grudge-offer.png)
 - **Standing preferences.** Every held rule is given to Claude in every session in that repo. Rules about
   personal style (spelling, tone) are held everywhere.
 - **Fixed commands.** Where a rule is an exact command swap, Grudge fixes the command before it runs and notes it
@@ -34,17 +36,16 @@ Remembers your corrections, so you only say "no, use pnpm" once.
   | `pip` | `pip3` | anything |
   | `python` | `python3` | anything |
 
+  Asked to run `npm test` anyway, the command ran as `pnpm test`:
+
+  ![A Bash call with the note "grudge #1: npm → pnpm" under it](../../docs/screenshots/grudge-swap.png)
+
 ## The pane
 
-Click `😤 3 grudges` in the status row, or run `/grudges`:
+Click `😤 1 grudge` in the status row, or run `/grudges`. Rules held for this repo come first, then those held
+everywhere:
 
-```
-😤 Grudges · payments-service
-#4   use pnpm, not npm             held 12 Sep · enforced 31×   [ Forgive ]
-#7   no default exports            held 20 Sep · reminded       [ Forgive ]
-everywhere
-#1   British spelling in comments  held 2 Aug · reminded        [ Forgive ]
-```
+![The Grudges pane listing "use pnpm, not npm", held 3 Oct, enforced 1×, with a Forgive button](../../docs/screenshots/grudge-pane.png)
 
 Forgiving a rule removes it at once.
 

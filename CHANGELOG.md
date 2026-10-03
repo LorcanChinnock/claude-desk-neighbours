@@ -1,5 +1,13 @@
 # Changelog
 
+## Unreleased
+
+Desk Neighbours:
+
+- Band buttons use digits, so they press from an empty prompt without `ctrl+x tab` first: Your Serve `1`–`3`,
+  Grudge `4`–`5`, Receipts `6`–`8`, Shrink Ray `9`, Previously On `0`. Your Serve's pane uses the same digits.
+- Each plugin's README has screenshots from a real session.
+
 ## 0.1.1
 
 Desk Neighbours (`grudge`, `your-serve`, `receipts`, `shrink-ray`, `previously-on`):
