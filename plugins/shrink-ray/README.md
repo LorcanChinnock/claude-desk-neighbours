@@ -5,7 +5,7 @@ Cuts a 1,240-line CI log down to the 30 lines Claude actually needs.
 ![A 272-line test run reaches Claude as 50 lines; Claude reads the saved original for the totals, then the pane lists the shrink](../../docs/screenshots/shrink-ray.gif)
 
 ```
-/plugin install shrink-ray@lorcan-plugins
+/plugin install shrink-ray@claude-desk-neighbours
 ```
 
 ## How it works

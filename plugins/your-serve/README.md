@@ -5,7 +5,7 @@ Lets you know when Claude is waiting on you, so you don't miss the question at t
 ![Claude ends a long answer with a question; Your Serve puts it above the prompt with its answers, and 1 fills in the reply](../../docs/screenshots/your-serve.gif)
 
 ```
-/plugin install your-serve@lorcan-plugins
+/plugin install your-serve@claude-desk-neighbours
 ```
 
 ## How it works

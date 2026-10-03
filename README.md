@@ -3,7 +3,7 @@
 </p>
 
 <p align="center">
-  <a href="https://github.com/LorcanChinnock/claude-plugins/actions/workflows/validate.yml"><img src="https://github.com/LorcanChinnock/claude-plugins/actions/workflows/validate.yml/badge.svg" alt="CI"></a>
+  <a href="https://github.com/LorcanChinnock/claude-desk-neighbours/actions/workflows/validate.yml"><img src="https://github.com/LorcanChinnock/claude-desk-neighbours/actions/workflows/validate.yml/badge.svg" alt="CI"></a>
   <img src="https://img.shields.io/badge/Claude%20Code-2.1.288-d97757" alt="Built for Claude Code 2.1.288">
   <a href="LICENSE"><img src="https://img.shields.io/badge/license-MIT-blue" alt="MIT license"></a>
 </p>
@@ -24,19 +24,19 @@ running anything, reads a 1,200-line log in full, and has no way to catch you up
 only pipe up, in a single line above it, when there's something worth saying.
 
 ```
-/plugin marketplace add LorcanChinnock/claude-plugins
+/plugin marketplace add LorcanChinnock/claude-desk-neighbours
 ```
 
 Then install whichever ones you want. They all work on their own, and they play nicely together if you have more
 than one:
 
 ```
-/plugin install grudge@lorcan-plugins
-/plugin install your-serve@lorcan-plugins
-/plugin install receipts@lorcan-plugins
-/plugin install shrink-ray@lorcan-plugins
-/plugin install previously-on@lorcan-plugins
-/plugin install show-and-tell@lorcan-plugins
+/plugin install grudge@claude-desk-neighbours
+/plugin install your-serve@claude-desk-neighbours
+/plugin install receipts@claude-desk-neighbours
+/plugin install shrink-ray@claude-desk-neighbours
+/plugin install previously-on@claude-desk-neighbours
+/plugin install show-and-tell@claude-desk-neighbours
 ```
 
 ---
@@ -171,7 +171,7 @@ The band clears when you send your next prompt.
 
 ## Settings
 
-You can change these in `/config`, or with `/plugin configure <plugin>@lorcan-plugins`.
+You can change these in `/config`, or with `/plugin configure <plugin>@claude-desk-neighbours`.
 
 | Plugin | Setting | Default |
 |---|---|---|
@@ -204,7 +204,7 @@ Desk Neighbours are mods, which means they're plugins written against Claude Cod
 is still in early access. They're built and tested on Claude Code 2.1.288, and since the API can change between
 releases, a newer Claude Code might need a newer version of these plugins. If a mod doesn't seem to be doing
 anything, `claude --debug` will log why it didn't load. Please
-[open an issue](https://github.com/LorcanChinnock/claude-plugins/issues) and include that line.
+[open an issue](https://github.com/LorcanChinnock/claude-desk-neighbours/issues) and include that line.
 
 ## Updating
 
@@ -212,7 +212,7 @@ Third-party marketplaces don't update by themselves unless you turn on auto-upda
 To update by hand:
 
 ```
-claude plugin marketplace update lorcan-plugins
+claude plugin marketplace update claude-desk-neighbours
 ```
 
 ## Developing

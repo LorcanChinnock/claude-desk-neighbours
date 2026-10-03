@@ -5,7 +5,7 @@ Catches "fixed" when nothing has run since the last edit, along with any debug l
 ![Claude adds a console.log and says it didn't run anything; Receipts flags the crumb, and 7 fills in a prompt to sweep it](../../docs/screenshots/receipts.gif)
 
 ```
-/plugin install receipts@lorcan-plugins
+/plugin install receipts@claude-desk-neighbours
 ```
 
 ## How it works

@@ -5,7 +5,7 @@ Shows a thumbnail as soon as you paste a screenshot, and keeps a gallery of ever
 ![A pasted screenshot of a broken checkout shows as a thumbnail before sending; Claude fixes it and snapshots the page, and /gallery shows both](../../docs/screenshots/show-and-tell.gif)
 
 ```
-/plugin install show-and-tell@lorcan-plugins
+/plugin install show-and-tell@claude-desk-neighbours
 ```
 
 ## How it works
