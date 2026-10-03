@@ -1,5 +1,12 @@
 # Changelog
 
+## [0.5.0](https://github.com/LorcanChinnock/claude-plugins/compare/v0.4.0...v0.5.0) (2026-10-03)
+
+
+### Features
+
+* **show-and-tell:** thumbnails on paste and a session gallery ([#12](https://github.com/LorcanChinnock/claude-plugins/issues/12)) ([f8307a0](https://github.com/LorcanChinnock/claude-plugins/commit/f8307a0b169e3c60190bac5fb69c8986d3ff0cfc))
+
 ## [0.4.0](https://github.com/LorcanChinnock/claude-plugins/compare/v0.3.0...v0.4.0) (2026-10-03)
 
 
