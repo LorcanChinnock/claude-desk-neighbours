@@ -197,20 +197,22 @@ test('its hint item joins the shared row in key order, and a click opens its pan
   }
 })
 
-test('after /clear the learned check command loads again', async ($, on) => {
-  const w = world(on)
-  w.store.set(`verify:${ROOT}`, 'pnpm test')
-  on('classic.SessionStart', () => ({}))
-  const checks = async () => {
-    const pane = await $.ui.mount({ plugin: 'receipts', surface: 'terminal', component: 'Pane', requestId: 'receipts', props: { title: 'x', isFocused: true, bodyColumns: 90, placement: 'dock', scroll: { offset: 0, bodyRows: 20 }, view: {} } })
-    const text = (await pane.findAll({ type: 'Text' })).map(t => t.text).join(' | ')
-    await pane.unmount()
-    return text
-  }
+for (const source of ['clear', 'resume'] as const) {
+  test(`after /${source} the learned check command loads again`, async ($, on) => {
+    const w = world(on)
+    w.store.set(`verify:${ROOT}`, 'pnpm test')
+    on('classic.SessionStart', () => ({}))
+    const checks = async () => {
+      const pane = await $.ui.mount({ plugin: 'receipts', surface: 'terminal', component: 'Pane', requestId: 'receipts', props: { title: 'x', isFocused: true, bodyColumns: 90, placement: 'dock', scroll: { offset: 0, bodyRows: 20 }, view: {} } })
+      const text = (await pane.findAll({ type: 'Text' })).map(t => t.text).join(' | ')
+      await pane.unmount()
+      return text
+    }
 
-  // A cleared session's state starts empty, and no session.start fires to fill it.
-  expect(await checks()).toContain('not learned yet')
-  await $.classic.SessionStart({ source: 'clear' })
-  await w.clock.settle()
-  expect(await checks()).toContain('pnpm test')
-})
+    // A cleared or resumed session's state starts empty, and no session.start fires to fill it.
+    expect(await checks()).toContain('not learned yet')
+    await $.classic.SessionStart({ source })
+    await w.clock.settle()
+    expect(await checks()).toContain('pnpm test')
+  })
+}

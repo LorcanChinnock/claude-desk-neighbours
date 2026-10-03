@@ -165,21 +165,23 @@ test('its hint item joins the shared row in key order, and a click opens its pan
   }
 })
 
-test('after /clear the rules list loads again', async ($, on) => {
-  const clock = mock.clock(on)
-  world(on, { grudges: [{ id: 1, rule: 'use pnpm, not npm', scope: 'repo', repo: ROOT, heldAt: 0, hits: 0, swap: null }] })
-  nothingBeneath(on)
-  on('classic.SessionStart', () => ({}))
-  const label = async () => {
-    const hint = await $.ui.mount({ plugin: 'grudge', surface: 'terminal', component: 'PromptHint', props: { isDraft: false, isWorking: false, hint: '' } })
-    const text = (await hint.find({ key: 'desk-1-grudge' }))?.text
-    await hint.unmount()
-    return text
-  }
+for (const source of ['clear', 'resume'] as const) {
+  test(`after /${source} the rules list loads again`, async ($, on) => {
+    const clock = mock.clock(on)
+    world(on, { grudges: [{ id: 1, rule: 'use pnpm, not npm', scope: 'repo', repo: ROOT, heldAt: 0, hits: 0, swap: null }] })
+    nothingBeneath(on)
+    on('classic.SessionStart', () => ({}))
+    const label = async () => {
+      const hint = await $.ui.mount({ plugin: 'grudge', surface: 'terminal', component: 'PromptHint', props: { isDraft: false, isWorking: false, hint: '' } })
+      const text = (await hint.find({ key: 'desk-1-grudge' }))?.text
+      await hint.unmount()
+      return text
+    }
 
-  // A cleared session's state starts empty, and no session.start fires to fill it.
-  expect(await label()).toBe('😤 no grudges')
-  await $.classic.SessionStart({ source: 'clear' })
-  await clock.settle()
-  expect(await label()).toBe('😤 1 grudge')
-})
+    // A cleared or resumed session's state starts empty, and no session.start fires to fill it.
+    expect(await label()).toBe('😤 no grudges')
+    await $.classic.SessionStart({ source })
+    await clock.settle()
+    expect(await label()).toBe('😤 1 grudge')
+  })
+}

@@ -1,5 +1,12 @@
 # Changelog
 
+## Unreleased
+
+Desk Neighbours:
+
+- After `/resume`, the mods load their saved data again, as 0.2.0 made them do after `/clear`. Resuming another
+  conversation also starts a session with empty state and runs no `session.start`.
+
 ## 0.2.0
 
 Desk Neighbours:
