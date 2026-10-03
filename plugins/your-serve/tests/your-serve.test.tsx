@@ -66,6 +66,7 @@ test('a question becomes the top band line, and an option fills the prompt', asy
   }
 
   const ui = await $.ui.mount({ plugin: 'your-serve', surface: 'terminal', ...BAND })
+  expect((await ui.findAll({ type: 'Button' })).map(b => b.props.hotkey)).toEqual(['1', '2'])
   await ui.press({ key: 'serve-2' })
   expect(box.text).toBe('Drop the old cache.')
   box.text = 'Also,'

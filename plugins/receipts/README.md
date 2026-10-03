@@ -25,13 +25,19 @@ typecheck, lint or build) from the last one that passed, and remembers it across
   🧾 No receipt: nothing ran since edit to src/auth.ts · 2 crumbs (console.log api.ts:41, .only auth.test.ts:12)
   ```
 
-The band offers what to do next. Each button fills your prompt; nothing is sent until you send it:
+  Here Claude added a debug log line and was asked not to run anything. It said so plainly, so there's no
+  "No receipt", only the crumb, with a button to sweep it:
+
+  ![A crumb line under Claude's answer, "1 crumb (console.log money.js:10)", and the band offering 7: Sweep](../../docs/screenshots/receipts-crumb.png)
+
+The band offers what to do next. Each button fills your prompt; nothing is sent until you send it. Type its
+digit into an empty prompt, or click it:
 
 | Key | Button | Fills |
 |---|---|---|
-| `r` | Run them | Run `` `pnpm test` `` and show me the result. |
-| `s` | Sweep | Remove these leftovers: console.log in src/api.ts:41, … |
-| `m` | Make it a rule | From now on, always run `` `pnpm test` `` before saying something is done. |
+| `6` | Run them | Run `` `pnpm test` `` and show me the result. |
+| `7` | Sweep | Remove these leftovers: console.log in src/api.ts:41, … |
+| `8` | Make it a rule | From now on, always run `` `pnpm test` `` before saying something is done. |
 
 "Make it a rule" appears after the second missing receipt in a session. If Grudge is installed, it will offer to
 hold that rule.
@@ -42,6 +48,8 @@ A turn that checked its work and left no crumbs shows nothing.
 
 Click the `🧾` item in the status row (`watching`, `2 unchecked`, `✓ checked`), or run `/receipts`: the check
 command, which files are unchecked, the last turn's crumbs, and missed receipts this session.
+
+![The Receipts pane after a passing test run: checks with pnpm test, nothing unchecked, no crumbs](../../docs/screenshots/receipts-pane.png)
 
 ## In the background
 

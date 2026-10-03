@@ -100,6 +100,8 @@ test('a lasting correction is offered, and Hold keeps it', async ($, on) => {
   }
 
   const ui = await $.ui.mount({ plugin: 'grudge', surface: 'terminal', ...BAND })
+  expect((await ui.find({ key: 'grudge-hold' }))?.props.hotkey).toBe('4')
+  expect((await ui.find({ key: 'grudge-nah' }))?.props.hotkey).toBe('5')
   await ui.press({ key: 'grudge-hold' })
   const stored = store.get('grudges') as { rule: string; scope: string; repo: string; swap: unknown }[]
   expect(stored).toHaveLength(1)

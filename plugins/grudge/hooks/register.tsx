@@ -330,9 +330,10 @@ export const register: Register = on => {
               😤 Hold a grudge? "{shown.rule}"{where}
             </Text>
           </Box>
+          {/* Digits press from an empty prompt; the Desk Neighbours split them so none clash (Grudge 4–5). */}
           <Box flexShrink={0} marginLeft={2} gap={1}>
-            <Button key="grudge-hold" hotkey="g" plain label="Hold" onPress={() => void hold($)} />
-            <Button key="grudge-nah" hotkey="n" plain label="Nah" onPress={() => void update($, offer, () => null)} />
+            <Button key="grudge-hold" hotkey="4" plain label="Hold" onPress={() => void hold($)} />
+            <Button key="grudge-nah" hotkey="5" plain label="Nah" onPress={() => void update($, offer, () => null)} />
           </Box>
         </Box>
       </Box>

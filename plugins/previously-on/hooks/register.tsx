@@ -314,7 +314,8 @@ export const register: Register = (on, options) => {
     if (shown === null && morning === null) return next(e)
     const below = await next(e)
     const { Box, Text, Button } = $.ui.resolve(e)
-    const dismiss = <Button key="previously-dismiss" hotkey="p" plain label="Dismiss" onPress={() => void hideAll($)} />
+    // Digits press from an empty prompt; the Desk Neighbours split them so none clash (Previously On 0).
+    const dismiss = <Button key="previously-dismiss" hotkey="0" plain label="Dismiss" onPress={() => void hideAll($)} />
     const line = (text: string, withDismiss: boolean) => (
       <Box flexDirection="row" width={e.props.bodyColumns}>
         <Box flexShrink={1}>

@@ -90,6 +90,7 @@ test('a big paste lands shrunk, its original saved, and Undo restores it exactly
 
   const ui = await $.ui.mount({ plugin: 'shrink-ray', surface: 'terminal', ...BAND })
   expect(await ui.find({ type: 'Text', text: /🔫 Shrunk 1,233 → \d+ lines/ })).toBeDefined()
+  expect((await ui.find({ key: 'shrink-undo' }))?.props.hotkey).toBe('9')
   await ui.press({ key: 'shrink-undo' })
   expect(w.box.text).toBe(`see: ${NOISY_LOG}`)
 })

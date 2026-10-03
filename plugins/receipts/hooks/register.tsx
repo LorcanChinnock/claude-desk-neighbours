@@ -351,15 +351,16 @@ export const register: Register = on => {
           <Box flexShrink={1}>
             <Text wrap="truncate-end">{shown.summary}</Text>
           </Box>
+          {/* Digits press from an empty prompt; the Desk Neighbours split them so none clash (Receipts 6–8). */}
           <Box flexShrink={0} marginLeft={2} gap={1}>
             {shown.missingFile !== null && (
-              <Button key="receipts-run" hotkey="r" plain label="Run them" onPress={() => void propose($, run)} />
+              <Button key="receipts-run" hotkey="6" plain label="Run them" onPress={() => void propose($, run)} />
             )}
             {shown.crumbs.length > 0 && (
-              <Button key="receipts-sweep" hotkey="s" plain label="Sweep" onPress={() => void propose($, sweep)} />
+              <Button key="receipts-sweep" hotkey="7" plain label="Sweep" onPress={() => void propose($, sweep)} />
             )}
             {shown.canMakeRule && (
-              <Button key="receipts-rule" hotkey="m" plain label="Make it a rule" onPress={() => void propose($, rule)} />
+              <Button key="receipts-rule" hotkey="8" plain label="Make it a rule" onPress={() => void propose($, rule)} />
             )}
           </Box>
         </Box>
