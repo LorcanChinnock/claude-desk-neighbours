@@ -1,6 +1,6 @@
 {
   "name": "your-serve",
-  "version": "0.7.0",
+  "version": "0.7.1",
   "description": "🎾 Tells you when Claude needs you: one line with the question it ended on, and its answers as buttons.",
   "author": {
     "name": "Lorcan Chinnock",

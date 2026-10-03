@@ -1,6 +1,6 @@
 {
   "name": "shrink-ray",
-  "version": "0.7.0",
+  "version": "0.7.1",
   "description": "🔫 Shrinks what the model reads: big pastes and long command output, with the full original saved outside the project.",
   "author": {
     "name": "Lorcan Chinnock",
