@@ -11,10 +11,14 @@ const BAND = {
 const ASKED = 'I refactored the loader.\n\nShould I keep the old cache or drop it?'
 const VERDICT = JSON.stringify({
   needsInput: true,
-  question: 'Keep the old cache or drop it?',
-  options: [
-    { label: 'Keep', reply: 'Keep the old cache.' },
-    { label: 'Drop', reply: 'Drop the old cache.' },
+  questions: [
+    {
+      question: 'Keep the old cache or drop it?',
+      options: [
+        { label: 'Keep', reply: 'Keep the old cache.' },
+        { label: 'Drop', reply: 'Drop the old cache.' },
+      ],
+    },
   ],
 })
 
@@ -52,17 +56,30 @@ test('only answers that end by asking are read', async () => {
 
 test('the question and answer labels show whole, up to 200 and 40 characters', () => {
   const question = 'Which approach do you want: replace the cache with a Postgres check, delete it, or keep it as a fast path?'
-  expect(toServe({ needsInput: true, question, options: [] })?.question).toBe(question)
+  expect(toServe({ needsInput: true, questions: [{ question, options: [] }] })?.questions[0]?.question).toBe(question)
   const serve = toServe({
     needsInput: true,
-    question: 'Where should formatMinor live?',
-    options: [
-      { label: 'Keep it in src/money.js', reply: 'Keep it in src/money.js.' },
-      { label: 'Move it to its own file under src/format', reply: 'Move it.' },
+    questions: [
+      {
+        question: 'Where should formatMinor live?',
+        options: [
+          { label: 'Keep it in src/money.js', reply: 'Keep it in src/money.js.' },
+          { label: 'Move it to its own file under src/format', reply: 'Move it.' },
+        ],
+      },
     ],
   })
-  expect(serve?.options.map(o => o.label)).toEqual(['Keep it in src/money.js', 'Move it to its own file under src/format'])
-  expect(toServe({ needsInput: true, question: 'Q?', options: [{ label: 'x'.repeat(60), reply: 'x' }] })?.options[0]?.label).toHaveLength(40)
+  expect(serve?.questions[0]?.options.map(o => o.label)).toEqual(['Keep it in src/money.js', 'Move it to its own file under src/format'])
+  const long = toServe({ needsInput: true, questions: [{ question: 'Q?', options: [{ label: 'x'.repeat(60), reply: 'x' }] }] })
+  expect(long?.questions[0]?.options[0]?.label).toHaveLength(40)
+})
+
+test('every question is kept in order, however many, and empty ones dropped', () => {
+  const asked = ['A?', 'B?', 'C?', 'D?', 'E?', 'F?', 'G?', 'H?', 'I?', 'J?']
+  const questions = ['', ...asked].map(question => ({ question, options: [] }))
+  expect(toServe({ needsInput: true, questions })?.questions.map(q => q.question)).toEqual(asked)
+  expect(toServe({ needsInput: true, questions: [] })).toBeNull()
+  expect(toServe({ needsInput: false, questions })).toBeNull()
 })
 
 test('a question becomes the top band line, and an option fills the prompt', async ($, on) => {
@@ -90,6 +107,61 @@ test('a question becomes the top band line, and an option fills the prompt', asy
   expect(seen.toasts).toEqual([])
 
   await $.prompt.submit({ text: 'Drop it', wait: false, origin: { kind: 'composer' } })
+  await clock.settle()
+  expect(await ui.find({ type: 'Text', text: /Your serve/ })).toBeUndefined()
+})
+
+test('several questions are asked one at a time, then all answers fill the prompt as one reply', async ($, on) => {
+  const clock = mock.clock(on)
+  const box = { text: '' }
+  const verdict = JSON.stringify({
+    needsInput: true,
+    questions: [
+      { question: 'Keep the old cache or drop it?', options: [{ label: 'Keep', reply: 'Keep the old cache.' }, { label: 'Drop', reply: 'Drop the old cache.' }] },
+      { question: 'What should the new timeout be?', options: [] },
+      { question: 'Add a retry?', options: [{ label: 'Yes', reply: 'Yes, add a retry.' }, { label: 'No', reply: 'No retry.' }] },
+    ],
+  })
+  const closed: string[] = []
+  on('ui.close', ($, e) => {
+    closed.push(e.id)
+    return { value: undefined }
+  })
+  beneath(on, verdict, box)
+  await $.turn.complete(turn('1. Should I keep the old cache?\n2. What timeout?\n3. Add a retry?'))
+  await clock.settle()
+
+  const ui = await $.ui.mount({ plugin: 'your-serve', surface: 'terminal', ...BAND })
+  expect(await ui.find({ type: 'Text', text: '🎾 Your serve (1/3): Keep the old cache or drop it?' })).toBeDefined()
+  expect((await ui.findAll({ type: 'Button' })).map(b => b.text)).toEqual(['Keep', 'Drop', 'skip'])
+  await ui.press({ key: 'serve-2' })
+  expect(box.text).toBe('')
+
+  expect(await ui.find({ type: 'Text', text: '🎾 Your serve (2/3): What should the new timeout be?' })).toBeDefined()
+  expect((await ui.findAll({ type: 'Button' })).map(b => b.text)).toEqual(['skip'])
+  await ui.press({ key: 'serve-skip' })
+  expect(box.text).toBe('')
+
+  expect(await ui.find({ type: 'Text', text: '🎾 Your serve (3/3): Add a retry?' })).toBeDefined()
+  const pane = await $.ui.mount({
+    plugin: 'your-serve',
+    surface: 'terminal',
+    component: 'Pane',
+    requestId: 'your-serve',
+    props: { title: 'x', isFocused: true, bodyColumns: 90, placement: 'dock', scroll: { offset: 0, bodyRows: 20 }, view: {} },
+  })
+  expect(await pane.find({ type: 'Text', text: '1. Keep the old cache or drop it? Drop the old cache.' })).toBeDefined()
+  expect(await pane.find({ type: 'Text', text: '2. What should the new timeout be? (skipped, type it in the prompt)' })).toBeDefined()
+  expect(await pane.find({ type: 'Text', text: '3. Add a retry?' })).toBeDefined()
+  await pane.unmount()
+  expect(closed).toEqual([])
+
+  await ui.press({ key: 'serve-1' })
+  expect(box.text).toBe('1. Keep the old cache or drop it? Drop the old cache.\n2. What should the new timeout be?\n3. Add a retry? Yes, add a retry.')
+  expect(await ui.find({ type: 'Text', text: '🎾 Your serve: all 3 answers are in your prompt' })).toBeDefined()
+  expect(await ui.findAll({ type: 'Button' })).toHaveLength(0)
+
+  await $.prompt.submit({ text: box.text, wait: false, origin: { kind: 'composer' } })
   await clock.settle()
   expect(await ui.find({ type: 'Text', text: /Your serve/ })).toBeUndefined()
 })
