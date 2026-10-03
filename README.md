@@ -1,5 +1,5 @@
 <p align="center">
-  <img src="docs/logo.png" width="760" alt="Desk Neighbours: five small colleagues for your Claude Code terminal. Grudge remembers, Your Serve nudges you, Receipts checks claims, Shrink Ray trims noise, Previously On catches you up.">
+  <img src="docs/logo.png" width="760" alt="Desk Neighbours: six small colleagues for your Claude Code terminal. Grudge remembers, Your Serve nudges you, Receipts checks claims, Shrink Ray trims noise, Previously On catches you up, Show & Tell shows you.">
 </p>
 
 <p align="center">
@@ -13,19 +13,20 @@
   <a href="#-your-serve">🎾 Your Serve</a> ·
   <a href="#-receipts">🧾 Receipts</a> ·
   <a href="#-shrink-ray">🔫 Shrink Ray</a> ·
-  <a href="#-previously-on">📺 Previously On</a>
+  <a href="#-previously-on">📺 Previously On</a> ·
+  <a href="#-show--tell">📸 Show & Tell</a>
 </p>
 
 Claude Code is great at the work and forgetful about the edges of it: the correction you made yesterday, the
 question buried at the end of a long answer, the "fixed!" with nothing run, the 1,200-line log, the session you
-walked away from. **Desk Neighbours** are five mods that each mind one of those edges. They live in a status row
+walked away from. **Desk Neighbours** are six mods that each mind one of those edges. They live in a status row
 under your prompt and speak up in one line above it, only when they have something to say.
 
 ```
 /plugin marketplace add LorcanChinnock/claude-plugins
 ```
 
-Then install any of them, or all five. Each works on its own, and they fit together when you have several:
+Then install any of them, or all six. Each works on its own, and they fit together when you have several:
 
 ```
 /plugin install grudge@lorcan-plugins
@@ -33,6 +34,7 @@ Then install any of them, or all five. Each works on its own, and they fit toget
 /plugin install receipts@lorcan-plugins
 /plugin install shrink-ray@lorcan-plugins
 /plugin install previously-on@lorcan-plugins
+/plugin install show-and-tell@lorcan-plugins
 ```
 
 ---
@@ -120,6 +122,23 @@ Then install any of them, or all five. Each works on its own, and they fit toget
 
 [Everything Previously On does →](plugins/previously-on)
 
+## 📸 Show & Tell
+
+**Shows you the pictures: a thumbnail the moment you paste a screenshot, and a gallery of every image in the session.**
+
+![A pasted screenshot of a broken checkout shows as a thumbnail before sending; Claude fixes it and snapshots the page, and /gallery shows both](docs/screenshots/show-and-tell.gif)
+
+- **A thumbnail on paste.** Press `ctrl+v` with a screenshot on the clipboard and it appears above the prompt
+  straight away, before you send. It goes when you send, or after 20 seconds.
+- **Claude's pictures too.** Images Claude reads, screenshots from browser and MCP tools, and pictures it writes
+  or makes with a command (`playwright screenshot`, a chart script) show up the same way.
+- **`/gallery`** lists them all, newest first, with a big preview and buttons to open one, put `@path` in your
+  prompt, copy its path or show it in its folder.
+- Pictures draw in terminals that support the kitty graphics protocol, such as Ghostty and kitty. Other terminals,
+  tmux and the desktop app show the same rows in words.
+
+[Everything Show & Tell does →](plugins/show-and-tell)
+
 ---
 
 ## How they work together
@@ -128,7 +147,7 @@ Then install any of them, or all five. Each works on its own, and they fit toget
 run its command, to open its pane; open several and they become tabs. Esc closes a pane.
 
 ```
-? for shortcuts   😤 3 grudges  🎾 ready  🧾 2 unchecked  🔫 12.4k deflected  📺 on air
+? for shortcuts   😤 3 grudges  🎾 ready  🧾 2 unchecked  🔫 12.4k deflected  📺 on air  📸 4
 ```
 
 **The band** above the prompt, only when a neighbour has something to say. One line each, Your Serve on top,
@@ -138,7 +157,8 @@ and lines wrap rather than cut anything off:
 
 **Buttons never send anything.** They put text in your prompt for you to read, edit and send. Type a button's
 digit into an empty prompt, or click it; with text already in the prompt, press `ctrl+x tab` first. Each
-neighbour has its own digits, so they never clash:
+neighbour has its own digits, so they never clash. Show & Tell's band buttons have no digit; click them, or open
+the gallery and use its letters:
 
 | Your Serve | Grudge | Receipts | Shrink Ray | Previously On |
 |---|---|---|---|---|
@@ -155,6 +175,7 @@ Change these in `/config`, or with `/plugin configure <plugin>@lorcan-plugins`.
 | `your-serve` | Toast when a turn that needs you took longer than (seconds) | 60 |
 | `your-serve` | Also say "Claude needs a decision" out loud (macOS) | off |
 | `previously-on` | Recap after this many idle minutes | 20 |
+| `show-and-tell` | Keep new thumbnails above the prompt for (seconds) | 20 |
 
 ## What runs in the background
 
@@ -165,7 +186,9 @@ Worth knowing before you install:
   session about. Each runs only after a cheap local check passes, so a typical turn makes none. Previously On's
   recap re-reads the session transcript once per return, served mostly from the prompt cache.
 - **Files on disk.** Shrink Ray keeps full originals in `~/.claude/shrink-ray/` so Claude can read them if it
-  needs to. Files older than seven days are removed at session start (macOS and Linux).
+  needs to. Show & Tell keeps copies of pasted and tool images in `~/.claude/show-and-tell/`, and runs `cp`,
+  `sips` or `magick` to copy and convert them. Both remove files older than seven days at session start (macOS and
+  Linux).
 - **Stored data.** Each plugin keeps a small store in your Claude Code config directory: Grudge its rules,
   Receipts each repo's check command, Shrink Ray a lifetime counter, Previously On a one-line-per-session log for
   two weeks. Uninstalling a plugin leaves its store in place.

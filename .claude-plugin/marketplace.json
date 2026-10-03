@@ -33,6 +33,11 @@
       "name": "previously-on",
       "source": "previously-on",
       "description": "📺 Catches you up: a recap when you come back to a session, a morning digest of yesterday, and /standup."
+    },
+    {
+      "name": "show-and-tell",
+      "source": "show-and-tell",
+      "description": "📸 Shows you the pictures: a thumbnail the moment you paste one, and /gallery of every image you and Claude passed around this session."
     }
   ]
 }
