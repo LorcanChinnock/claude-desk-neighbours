@@ -1,6 +1,6 @@
 {
   "name": "closing-time",
-  "version": "0.6.0",
+  "version": "0.7.0",
   "description": "🔔 Closes the PR loop: watches a PR until CI and agent reviews are green, and weighs review comments before acting on them.",
   "author": {
     "name": "Lorcan Chinnock",
@@ -24,7 +24,10 @@
       "type": "string",
       "title": "Post replies",
       "description": "ask: drafted thread replies wait for you to press Post. auto: they are posted as soon as they are drafted.",
-      "options": ["ask", "auto"],
+      "options": [
+        "ask",
+        "auto"
+      ],
       "default": "ask"
     },
     "rerunFlaky": {

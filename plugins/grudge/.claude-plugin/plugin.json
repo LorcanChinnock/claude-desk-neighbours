@@ -1,6 +1,6 @@
 {
   "name": "grudge",
-  "version": "0.6.0",
+  "version": "0.7.0",
   "description": "😤 Remembers your corrections: offers to hold a lasting preference, reminds Claude of it every session, and fixes commands it can swap safely.",
   "author": {
     "name": "Lorcan Chinnock",

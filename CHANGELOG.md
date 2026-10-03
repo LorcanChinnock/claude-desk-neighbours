@@ -1,5 +1,12 @@
 # Changelog
 
+## [0.7.0](https://github.com/LorcanChinnock/claude-desk-neighbours/compare/v0.6.0...v0.7.0) (2026-10-03)
+
+
+### Features
+
+* **closing-time:** watch a PR until CI and agent reviews are green ([#17](https://github.com/LorcanChinnock/claude-desk-neighbours/issues/17)) ([b217dc7](https://github.com/LorcanChinnock/claude-desk-neighbours/commit/b217dc7efc15332349b9e33e3fbaee53659d067b))
+
 ## [0.6.0](https://github.com/LorcanChinnock/claude-desk-neighbours/compare/v0.5.0...v0.6.0) (2026-10-03)
 
 
