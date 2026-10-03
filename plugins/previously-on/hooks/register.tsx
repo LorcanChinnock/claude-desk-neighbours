@@ -63,6 +63,13 @@ export function recapLines(reply: string): string[] {
   return found
 }
 
+/** `text` cut to at most `max` characters at a word break, never mid-word. */
+export function wholeWords(text: string, max: number): string {
+  if (text.length <= max) return text
+  const at = text.slice(0, max + 1).lastIndexOf(' ')
+  return at > 0 ? text.slice(0, at) : text.slice(0, max)
+}
+
 function isEntry(value: unknown): value is DayEntry {
   if (typeof value !== 'object' || value === null) return false
   const v = value as Record<string, unknown>
@@ -189,7 +196,7 @@ async function logTopic($: EngineInterface): Promise<void> {
     prompt: `What is this coding session about? The user asked:\n${asked.join('\n')}`,
   })
   if (!reply.isAnswered) return
-  const topic = reply.text.replace(/[\s."']+$/g, '').replace(/\s+/g, ' ').trim().toLowerCase().slice(0, 40)
+  const topic = wholeWords(reply.text.replace(/[\s."']+$/g, '').replace(/\s+/g, ' ').trim().toLowerCase(), 40)
   if (topic === '') return
   const now = await $.clock.now()
   const entry: DayEntry = { day: localDay(now), sessionId: await $.session.id(), repo: await repoName($), topic }
@@ -231,6 +238,10 @@ async function reset($: EngineInterface): Promise<void> {
 // a row keyed `desk-hint` after the engine's own hint; items are kept in order by their keys
 // (`desk-1-…` to `desk-5-…`), so the row reads the same alone or together, in any load order.
 const DESK = 'desk-hint'
+
+// The engine draws the band's collapse mark `[-]` over the right end of its first row without
+// narrowing `bodyColumns`, so band rows stop this many cells short of the edge.
+const MARKER = 4
 
 function keyOf(node: RenderNode | undefined): string {
   if (typeof node !== 'object' || node === null || !('props' in node)) return ''
@@ -316,16 +327,13 @@ export const register: Register = (on, options) => {
     const { Box, Text, Button } = $.ui.resolve(e)
     // Digits press from an empty prompt; the Desk Neighbours split them so none clash (Previously On 0).
     const dismiss = <Button key="previously-dismiss" hotkey="0" plain label="Dismiss" onPress={() => void hideAll($)} />
+    // Lines wrap rather than truncate, so the recap and Dismiss always show whole.
     const line = (text: string, withDismiss: boolean) => (
-      <Box flexDirection="row" width={e.props.bodyColumns}>
+      <Box flexDirection="row" flexWrap="wrap" columnGap={2} width={e.props.bodyColumns - MARKER}>
         <Box flexShrink={1}>
-          <Text wrap="truncate-end">{text}</Text>
+          <Text>{text}</Text>
         </Box>
-        {withDismiss && (
-          <Box flexShrink={0} marginLeft={2}>
-            {dismiss}
-          </Box>
-        )}
+        {withDismiss && <Box flexShrink={0}>{dismiss}</Box>}
       </Box>
     )
     return (
@@ -335,10 +343,9 @@ export const register: Register = (on, options) => {
         {shown !== null && line(`📺 Previously on ${shown.repo}…`, true)}
         {shown !== null &&
           shown.lines.map(text => (
-            <Text wrap="truncate-end">
-              {'   '}
-              {text}
-            </Text>
+            <Box paddingLeft={3} width={e.props.bodyColumns - MARKER}>
+              <Text>{text}</Text>
+            </Box>
           ))}
       </Box>
     )
@@ -366,7 +373,7 @@ export const register: Register = (on, options) => {
           <Text dimColor>{label}</Text>
         </Box>
         <Box flexShrink={1}>
-          <Text wrap="truncate-end" dimColor={entries.length === 0}>
+          <Text dimColor={entries.length === 0}>
             {entries.length === 0 ? 'nothing logged yet' : bySession(entries).join(' · ')}
           </Text>
         </Box>

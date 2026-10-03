@@ -51,7 +51,7 @@ on it. Open several and they become tabs. Esc closes a pane.
 
 All five in a real session, with Your Serve and Previously On both in the band:
 
-![Claude Code with all five neighbours: a Your Serve question and a Previously On recap above the prompt, the status row below](docs/screenshots/previously-recap.png)
+![Claude Code with all five neighbours: a Your Serve question and a Previously On recap in the band, the status row below](docs/screenshots/previously-recap.png)
 
 Band buttons never send anything. They put text in your prompt for you to read, edit and send yourself.
 To press one from the keyboard, type its digit into an empty prompt. With text in the prompt a digit just

@@ -2,7 +2,7 @@ import { expect, mock, test } from 'claude-code/testing'
 import type { On } from 'claude-code'
 import type { Engine, EngineCall } from 'claude-code/testing'
 
-import { lastDayBefore, localDay, recapLines } from '../hooks/register'
+import { lastDayBefore, localDay, recapLines, wholeWords } from '../hooks/register'
 
 const USAGE = { input_tokens: 1, output_tokens: 1, cache_read_input_tokens: 0, cache_creation_input_tokens: 0 }
 const ROOT = '/work/payments-service'
@@ -57,6 +57,12 @@ test('recap lines come back in order, waiting first, empties dropped', async () 
     { day: '2026-10-03', sessionId: 'c', repo: 'web-app', topic: 'today' },
   ]
   expect(lastDayBefore(days, '2026-10-03')?.entries.map(e => e.sessionId)).toEqual(['b'])
+})
+
+test('a long topic is cut at a word break, never mid-word', () => {
+  expect(wholeWords('pnpm package manager and testing workflow', 40)).toBe('pnpm package manager and testing')
+  expect(wholeWords('webhook retries', 40)).toBe('webhook retries')
+  expect(wholeWords('x'.repeat(50), 40)).toBe('x'.repeat(40))
 })
 
 test('the first keystroke after twenty idle minutes shows the recap, made once', async ($, on) => {

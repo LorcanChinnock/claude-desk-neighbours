@@ -2,6 +2,8 @@
 
 Remembers your corrections, so you only say "no, use pnpm" once.
 
+![Saying "no, use pnpm, not npm": Grudge offers to hold it while Claude works, and 4 holds it](../../docs/screenshots/grudge.gif)
+
 ```
 /plugin install grudge@lorcan-plugins
 ```
@@ -17,8 +19,6 @@ Remembers your corrections, so you only say "no, use pnpm" once.
 
   Nothing is remembered unless you press Hold: type `4` into an empty prompt, or click it. One-off fixes
   ("that's the wrong file") don't get an offer. An ignored offer fades when you send your next prompt.
-
-  ![Grudge offering to hold "Use debug package logger instead of console.log" while Claude works](../../docs/screenshots/grudge-offer.png)
 - **Standing preferences.** Every held rule is given to Claude in every session in that repo. Rules about
   personal style (spelling, tone) are held everywhere.
 - **Fixed commands.** Where a rule is an exact command swap, Grudge fixes the command before it runs and notes it

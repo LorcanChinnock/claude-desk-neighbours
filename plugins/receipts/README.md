@@ -2,6 +2,8 @@
 
 Checks claims and leftovers: "fixed" with nothing run since the last edit, and the debug lines left behind.
 
+![Claude adds a console.log and says it didn't run anything; Receipts flags the crumb, and 7 fills in a prompt to sweep it](../../docs/screenshots/receipts.gif)
+
 ```
 /plugin install receipts@lorcan-plugins
 ```
@@ -25,10 +27,8 @@ typecheck, lint or build) from the last one that passed, and remembers it across
   🧾 No receipt: nothing ran since edit to src/auth.ts · 2 crumbs (console.log api.ts:41, .only auth.test.ts:12)
   ```
 
-  Here Claude added a debug log line and was asked not to run anything. It said so plainly, so there's no
-  "No receipt", only the crumb, with a button to sweep it:
-
-  ![A crumb line under Claude's answer, "1 crumb (console.log money.js:10)", and the band offering 7: Sweep](../../docs/screenshots/receipts-crumb.png)
+  In the demo above Claude was asked not to run anything and said so plainly, so there's no "No receipt",
+  only the crumb.
 
 The band offers what to do next. Each button fills your prompt; nothing is sent until you send it. Type its
 digit into an empty prompt, or click it:

@@ -2,6 +2,8 @@
 
 Tells you when Claude needs you, so the question at the end of a long answer doesn't get missed.
 
+![Claude ends a long answer with a question; Your Serve puts it above the prompt with its answers, and 1 fills in the reply](../../docs/screenshots/your-serve.gif)
+
 ```
 /plugin install your-serve@lorcan-plugins
 ```
@@ -14,13 +16,12 @@ When a turn ends with a question, a choice between options, or "should I also…
 🎾 Your serve: Keep the old cache or drop it?          1: Keep  2: Drop  3: Something else
 ```
 
-![Your Serve picking out "Should I run pnpm add debug and make the swap?" from the end of an answer, with two answers as buttons](../../docs/screenshots/your-serve-band.png)
-
 Pressing an answer puts a natural reply in your prompt ("Drop the old cache.") for you to send. Type its
 digit into an empty prompt, or click it. With no clear options, the line shows just the question. It stays until
 you send a prompt. Answers that are statements produce nothing, and subagents' turns are ignored.
 
-![After pressing 1: the prompt reads "Yes, run pnpm add debug and make the swap.", not yet sent](../../docs/screenshots/your-serve-filled.png)
+The line wraps rather than cutting anything off: when the question and its answers don't fit on one line, the
+answers move to the next. At most three answers get buttons; for any other answer, type it.
 
 Your Serve reads the text of Claude's answer, so a question Claude asks with its own question picker doesn't
 show here. The picker is already in front of you.

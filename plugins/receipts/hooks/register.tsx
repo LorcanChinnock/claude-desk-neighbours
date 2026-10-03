@@ -242,6 +242,10 @@ async function audit($: EngineInterface, answer: string, signal: AbortSignal): P
 // (`desk-1-…` to `desk-5-…`), so the row reads the same alone or together, in any load order.
 const DESK = 'desk-hint'
 
+// The engine draws the band's collapse mark `[-]` over the right end of its first row without
+// narrowing `bodyColumns`, so band rows stop this many cells short of the edge.
+const MARKER = 4
+
 function keyOf(node: RenderNode | undefined): string {
   if (typeof node !== 'object' || node === null || !('props' in node)) return ''
   const key = (node.props as Record<string, unknown> | undefined)?.key
@@ -347,12 +351,13 @@ export const register: Register = on => {
     return (
       <Box flexDirection="column">
         {below}
-        <Box flexDirection="row" width={e.props.bodyColumns}>
+        {/* Wraps rather than truncates, so the summary and its buttons always show whole. */}
+        <Box flexDirection="row" flexWrap="wrap" columnGap={2} width={e.props.bodyColumns - MARKER}>
           <Box flexShrink={1}>
-            <Text wrap="truncate-end">{shown.summary}</Text>
+            <Text>{shown.summary}</Text>
           </Box>
           {/* Digits press from an empty prompt; the Desk Neighbours split them so none clash (Receipts 6–8). */}
-          <Box flexShrink={0} marginLeft={2} gap={1}>
+          <Box flexShrink={0} flexWrap="wrap" gap={1}>
             {shown.missingFile !== null && (
               <Button key="receipts-run" hotkey="6" plain label="Run them" onPress={() => void propose($, run)} />
             )}
@@ -394,7 +399,7 @@ export const register: Register = on => {
           <Text dimColor>{label}</Text>
         </Box>
         <Box flexShrink={1} flexGrow={1}>
-          <Text dimColor={isDim} wrap="truncate-end">
+          <Text dimColor={isDim}>
             {value}
           </Text>
         </Box>
