@@ -1,5 +1,12 @@
 # Changelog
 
+## [0.4.0](https://github.com/LorcanChinnock/claude-plugins/compare/v0.3.0...v0.4.0) (2026-10-03)
+
+
+### Features
+
+* **your-serve:** ask any number of questions ([675e4b8](https://github.com/LorcanChinnock/claude-plugins/commit/675e4b8135563266037fda58e195b71544b6977c))
+
 ## 0.3.0
 
 Desk Neighbours:
