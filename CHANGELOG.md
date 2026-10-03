@@ -1,5 +1,16 @@
 # Changelog
 
+## [0.6.0](https://github.com/LorcanChinnock/claude-desk-neighbours/compare/v0.5.0...v0.6.0) (2026-10-03)
+
+
+### ⚠ BREAKING CHANGES
+
+* rename the repo and marketplace to claude-desk-neighbours ([#15](https://github.com/LorcanChinnock/claude-desk-neighbours/issues/15))
+
+### Miscellaneous Chores
+
+* rename the repo and marketplace to claude-desk-neighbours ([#15](https://github.com/LorcanChinnock/claude-desk-neighbours/issues/15)) ([c45e422](https://github.com/LorcanChinnock/claude-desk-neighbours/commit/c45e422a994f6dcc05fbf79f4e3b596205b368bc))
+
 ## [0.5.0](https://github.com/LorcanChinnock/claude-plugins/compare/v0.4.0...v0.5.0) (2026-10-03)
 
 
