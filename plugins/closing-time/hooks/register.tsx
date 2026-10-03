@@ -16,9 +16,13 @@ const HEARTBEAT_MS = 15_000
 const MINUTE = 60_000
 // Checks register a little after a push; a PR with none after this long has no CI.
 const NO_CI_GRACE_MS = 2 * MINUTE
+// Green is watched this long after the last change: a bot's first review can land after its re-review of a push.
+const GREEN_SETTLE_MS = 10 * MINUTE
 const LOG_TAIL = 60
 const MAX_DIFF = 12_000
 const MAX_BODY = 4_000
+// Evidence longer than this is left out of a reply.
+const MAX_CITED = 100
 // At most this many triage agents start in one poll; the rest wait for the next.
 const MAX_TRIAGE = 6
 
@@ -176,7 +180,8 @@ const short = (sha: string) => sha.slice(0, 7)
 export function replyFor(t: ThreadRow): string | null {
   const v = t.verdict
   if (v === null) return null
-  const backed = v.evidence === '' ? '' : ` (${v.evidence})`
+  // A reply cites one short pointer; a longer trail of evidence stays in the pane.
+  const backed = v.evidence === '' || v.evidence.length > MAX_CITED ? '' : ` (${v.evidence})`
   if (v.kind === 'decline') return `Not changing this: ${v.reason}${backed}`
   if (v.kind === 'already-handled') return `Already handled: ${v.reason}${backed}`
   if (t.fixedInSha === null) return null
@@ -354,12 +359,14 @@ export const TRIAGE_SYSTEM = [
   '  said so".',
   '- needs-human is for design decisions, trade-offs only the author can make, or comments that contradict another',
   '  reviewer. Not for anything merely hard.',
+  '- Name files by their path from the repository root (src/a.ts:12), never an absolute path: the reason and',
+  '  evidence may be posted on the PR.',
   '',
   UNTRUSTED,
   '',
   'End your answer with one JSON object on its own, nothing after it:',
   '{"verdict": "accept" | "accept-modified" | "decline" | "already-handled" | "needs-human",',
-  ' "reason": "one sentence a reviewer would accept", "evidence": "path:line or what you checked",',
+  ' "reason": "one sentence a reviewer would accept", "evidence": "one short pointer: a path:line or the command you ran",',
   ' "change": "for accept-modified: what to do instead; otherwise empty"}',
 ].join('\n')
 
@@ -371,6 +378,20 @@ export function triagePrompt(w: ClosingWatch, t: ThreadRow, diff: string): strin
     '',
     diff === '' ? 'This file has no changes in the PR diff.' : `The PR's diff for ${t.path}:\n<diff>\n${diff}\n</diff>`,
   ].join('\n')
+}
+
+/** At most `max` characters, cut at a word with an ellipsis rather than mid-word. */
+export function clip(text: string, max: number): string {
+  if (text.length <= max) return text
+  const cut = text.slice(0, max - 1)
+  const space = cut.lastIndexOf(' ')
+  return `${(space > max / 2 ? cut.slice(0, space) : cut).replace(/[\s,;:(\[]+$/, '')}…`
+}
+
+/** The verdict with the checkout's own path taken out: a reply quoting it would post a local path on the PR. */
+export function withinRepo(v: Verdict, root: string): Verdict {
+  const strip = (text: string) => (root === '' ? text : text.split(`${root.replace(/\/$/, '')}/`).join(''))
+  return { ...v, reason: strip(v.reason), evidence: strip(v.evidence), change: strip(v.change) }
 }
 
 /** The verdict at the end of a triage answer, or a needs-human one saying why there is none. */
@@ -385,7 +406,7 @@ export function parseVerdict(answer: string): Verdict {
     return {
       kind: kind as Verdict['kind'],
       reason: str(v.reason).slice(0, 400) || 'no reason given',
-      evidence: str(v.evidence).slice(0, 200),
+      evidence: clip(str(v.evidence), 200),
       change: str(v.change).slice(0, 400),
       isOverridden: false,
     }
@@ -489,7 +510,7 @@ async function poll($: EngineInterface, limits: Limits, isAutoPost: boolean): Pr
   const now = await $.clock.now()
   try {
     const w = await read($, watch)
-    if (w === null || w.phase === 'green' || w.phase === 'stopped') return
+    if (w === null || !isWatching(w, now)) return
     const stdout = await ghOk($, ['api', 'graphql', '-f', `query=${QUERY}`, '-F', `owner=${w.owner}`, '-F', `name=${w.repo}`, '-F', `number=${w.number}`])
     const snap = parseSnapshot(stdout)
     // A second pass over the same snapshot when triage settled at once (a spawn that started no agent).
@@ -506,7 +527,7 @@ async function poll($: EngineInterface, limits: Limits, isAutoPost: boolean): Pr
       if (!actions.some(x => x.kind === 'triage') || after === null || Object.keys(after.triaging).length > 0) break
     }
   } catch (err) {
-    await update($, watch, w => (w === null ? null : { ...w, note: `gh: ${err instanceof Error ? err.message : String(err)}`, nextPollAt: now + 2 * MINUTE }))
+    await update($, watch, w => (w === null ? null : { ...w, note: err instanceof Error ? err.message : String(err), nextPollAt: now + 2 * MINUTE }))
   } finally {
     polling = false
   }
@@ -515,8 +536,14 @@ async function poll($: EngineInterface, limits: Limits, isAutoPost: boolean): Pr
 /** The heartbeat: polls when one is due. */
 async function tick($: EngineInterface, limits: Limits, isAutoPost: boolean): Promise<void> {
   const w = await read($, watch)
-  if (w === null || w.phase === 'green' || w.phase === 'stopped') return
-  if ((await $.clock.now()) >= w.nextPollAt) await poll($, limits, isAutoPost)
+  const now = await $.clock.now()
+  if (w !== null && isWatching(w, now) && now >= w.nextPollAt) await poll($, limits, isAutoPost)
+}
+
+/** Whether the watch still polls: not once stopped, nor once green has held with nothing changing. */
+export function isWatching(w: ClosingWatch, now: number): boolean {
+  if (w.phase === 'stopped') return false
+  return w.phase !== 'green' || now - w.lastProgressAt <= GREEN_SETTLE_MS
 }
 
 async function act($: EngineInterface, action: Action, limits: Limits): Promise<void> {
@@ -532,7 +559,12 @@ async function logTail($: EngineInterface, check: CheckRow): Promise<string> {
   if (check.runId === null) return ''
   const done = await gh($, ['run', 'view', String(check.runId), '--log-failed'], 90_000).catch(() => null)
   if (done === null || done.exitCode !== 0) return ''
-  return done.stdout.trimEnd().split('\n').slice(-LOG_TAIL).join('\n')
+  return logLines(done.stdout)
+}
+
+/** The end of a failed-job log, each line without the job, step and timestamp `gh run view --log-failed` puts first. */
+export function logLines(log: string): string {
+  return log.trimEnd().split('\n').slice(-LOG_TAIL).map(l => l.replace(/^[^\t]*\t[^\t]*\t\d{4}-\d\d-\d\dT[\d:.]+Z ?/, '')).join('\n')
 }
 
 async function looksLikeFlake($: EngineInterface, log: string): Promise<boolean> {
@@ -564,6 +596,8 @@ async function briefCi($: EngineInterface, checks: readonly CheckRow[], limits: 
     }
     toBrief.push({ check, log })
   }
+  // Sent before it is recorded: a submit the engine refuses leaves this commit unbriefed, to try again next poll.
+  if (toBrief.length > 0) await $.prompt.submit({ text: ciBrief(w, toBrief, limits) })
   const key = `${w.headSha}:ci`
   await update($, watch, now => now === null ? null : {
     ...now,
@@ -572,7 +606,6 @@ async function briefCi($: EngineInterface, checks: readonly CheckRow[], limits: 
     ciAttempts: toBrief.reduce((a, { check }) => ({ ...a, [check.name]: (a[check.name] ?? 0) + 1 }), now.ciAttempts),
     note: toBrief.length > 0 ? 'Claude is fixing CI' : `rerunning ${rerun.join(', ')} as a likely flake`,
   })
-  if (toBrief.length > 0) await $.prompt.submit({ text: ciBrief(w, toBrief, limits) })
 }
 
 async function triage($: EngineInterface, threadIds: readonly string[]): Promise<void> {
@@ -612,14 +645,13 @@ async function briefReviews($: EngineInterface, threadIds: readonly string[], li
   if (w === null) return
   const fix = w.threads.filter(t => threadIds.includes(t.id))
   if (fix.length === 0) return
-  const text = reviewBrief(w, fix, limits)
+  await $.prompt.submit({ text: reviewBrief(w, fix, limits) })
   await update($, watch, now => now === null ? null : {
     ...now,
     rounds: now.rounds + 1,
     briefed: [...now.briefed, `${now.headSha}:reviews:${now.rounds + 1}`],
     threads: now.threads.map(t => (threadIds.includes(t.id) ? { ...t, briefedRound: now.rounds + 1 } : t)),
   })
-  await $.prompt.submit({ text })
 }
 
 async function postReplies($: EngineInterface): Promise<void> {
@@ -762,7 +794,8 @@ export const register: Register = (on, options) => {
   on('command.run', { command: 'ship' }, async ($, e) => {
     shipAsked = true
     const extra = e.args.trim()
-    await $.prompt.submit({ text: extra === '' ? SHIP : `${SHIP}\n\nAlso: ${extra}` })
+    // A prompt submitted from this hook would wait on the turn the command holds, so it goes once the command is done.
+    $.clock.after(1, () => void $.prompt.submit({ text: extra === '' ? SHIP : `${SHIP}\n\nAlso: ${extra}` }).catch(() => undefined))
     return { text: '🔔 Asked Claude to raise the PR; Closing Time watches it once it exists.' }
   })
 
@@ -788,7 +821,8 @@ export const register: Register = (on, options) => {
     const url = PR_URL.exec(`${ran.result.stdout}\n${ran.text ?? ''}`)?.[0]
     if (url === undefined) return ran
     shipAsked = false
-    void startWatch($, url, limits, isAutoPost).catch(() => undefined)
+    // Polling can brief Claude, which must not happen from inside the turn this tool call belongs to.
+    $.clock.after(1, () => void startWatch($, url, limits, isAutoPost).catch(() => undefined))
     return ran
   })
 
@@ -800,13 +834,14 @@ export const register: Register = (on, options) => {
     const w = await read($, watch)
     const threadId = w?.triaging[agentId]
     if (threadId === undefined) return done
-    const verdict = e.reason === 'answer' ? parseVerdict(e.answer) : parseVerdict('')
+    const root = (await $.session.repo())?.root ?? (await $.session.root())
+    const verdict = withinRepo(e.reason === 'answer' ? parseVerdict(e.answer) : parseVerdict(''), root)
     await update($, watch, now => {
       if (now === null) return null
       const { [agentId]: _, ...triaging } = now.triaging
       return { ...setVerdict(now, threadId, verdict), triaging, nextPollAt: 0 }
     })
-    if (Object.keys((await read($, watch))?.triaging ?? {}).length === 0) void poll($, limits, isAutoPost).catch(() => undefined)
+    if (Object.keys((await read($, watch))?.triaging ?? {}).length === 0) $.clock.after(1, () => void poll($, limits, isAutoPost).catch(() => undefined))
     return done
   })
 
@@ -873,6 +908,8 @@ export const register: Register = (on, options) => {
     const drift = driftHint(w.threads)
     const bots = w.threads.filter(t => t.isBot)
     const humans = w.threads.filter(t => !t.isBot && !t.isResolved)
+    // Without branch protection nothing is required and every check counts, so none is marked optional.
+    const hasRequired = w.checks.some(c => c.isRequired)
     return (
       <Box flexDirection="column" width={e.props.bodyColumns}>
         <Box flexDirection="row" marginBottom={1}>
@@ -882,7 +919,7 @@ export const register: Register = (on, options) => {
         <Text bold>Checks</Text>
         {w.checks.length === 0 ? <Text dimColor>none yet</Text> : w.checks.map(c => (
           <Text key={`check-${c.name}`} dimColor={c.state === 'passed' || c.state === 'skipped'}>
-            {CHECK_MARK[c.state]} {c.name}{c.isRequired ? '' : ' (optional)'}{(w.ciAttempts[c.name] ?? 0) > 0 ? ` · ${w.ciAttempts[c.name]} fix${w.ciAttempts[c.name] === 1 ? '' : 'es'}` : ''}
+            {CHECK_MARK[c.state]} {c.name}{hasRequired && !c.isRequired ? ' (optional)' : ''}{(w.ciAttempts[c.name] ?? 0) > 0 ? ` · ${w.ciAttempts[c.name]} fix${w.ciAttempts[c.name] === 1 ? '' : 'es'}` : ''}
           </Text>
         ))}
         <Box marginTop={1}>
@@ -905,7 +942,8 @@ export const register: Register = (on, options) => {
                 {t.verdict?.isOverridden ? ' (yours)' : ''} · {where(t)} · {t.author}{t.isResolved ? ' · resolved' : ''}
               </Text>
               {t.verdict !== null && <Text dimColor>  {t.verdict.reason}{t.verdict.evidence ? ` [${t.verdict.evidence}]` : ''}</Text>}
-              {t.reply !== null && <Text dimColor>  reply {t.reply.status}: {t.reply.text}</Text>}
+              {/* A draft shows what would be posted; once posted or discarded, the status is enough. */}
+              {t.reply !== null && <Text dimColor>  reply {t.reply.status}{t.reply.status === 'draft' ? `: ${t.reply.text}` : ''}</Text>}
             </Box>
             {t.verdict !== null && !t.isResolved && (
               <Box flexShrink={0} marginLeft={2}>

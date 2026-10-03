@@ -2,7 +2,7 @@ import { expect, mock, test } from 'claude-code/testing'
 import type { On } from 'claude-code'
 
 import type { ClosingWatch, ThreadRow, Verdict } from '../types'
-import { driftHint, evaluate, fileDiff, flipped, hintLabel, limitsOf, parseSnapshot, parseVerdict, quoted, reviewBrief } from '../hooks/register'
+import { driftHint, evaluate, isWatching, fileDiff, flipped, hintLabel, limitsOf, parseSnapshot, logLines, parseVerdict, quoted, replyFor, reviewBrief, withinRepo } from '../hooks/register'
 import type { Limits, Snapshot } from '../hooks/register'
 
 const MIN = 60_000
@@ -142,6 +142,20 @@ test('the loop to green: accepted fixed and declined answered, every reviewer on
   expect(green.actions).toEqual([{ kind: 'announce', phase: 'green' }])
 })
 
+test('a green PR is watched a while longer, and a late review comment reopens it', () => {
+  const reviews = [{ login: 'coderabbitai', sha: 'aaaaaaa1' }]
+  const green = evaluate(watchOf(), snap({ checks: [{ name: 'test' }], reviews }), 5 * MIN, LIMITS, false).watch
+  expect(green.phase).toBe('green')
+  expect(isWatching(green, 14 * MIN)).toBe(true)
+  expect(isWatching(green, 16 * MIN)).toBe(false)
+  expect(isWatching({ ...green, phase: 'stopped' }, 5 * MIN)).toBe(false)
+
+  // The bot's first review lands after its re-review of the push: the comment is triaged, not missed.
+  const late = evaluate(green, snap({ checks: [{ name: 'test' }], reviews, threads: [{ id: 'T1', author: 'coderabbitai' }] }), 6 * MIN, LIMITS, false)
+  expect(late.watch.phase).toBe('triaging')
+  expect(late.actions).toEqual([{ kind: 'triage', threadIds: ['T1'] }])
+})
+
 test('auto posting posts drafts without asking', () => {
   const t = snap({ threads: [{ id: 'T1', author: 'coderabbitai' }] }).threads[0]
   if (t === undefined) throw new Error('no thread')
@@ -182,6 +196,18 @@ test('a verdict is read from the end of the answer, and a missing one goes to th
   const v = parseVerdict('I read src/limits.ts and the caller.\n{"verdict": "decline", "reason": "the null case cannot occur", "evidence": "src/api.ts:31", "change": ""}')
   expect(v).toEqual({ kind: 'decline', reason: 'the null case cannot occur', evidence: 'src/api.ts:31', change: '', isOverridden: false })
   expect(parseVerdict('Looks good to me!').kind).toBe('needs-human')
+  // A local checkout path never reaches a reply posted on the PR.
+  const local = parseVerdict('{"verdict": "decline", "reason": "/work/api/src/a.ts:8 uses max", "evidence": "/work/api/src/a.ts:8", "change": ""}')
+  expect(withinRepo(local, '/work/api')).toEqual({ ...local, reason: 'src/a.ts:8 uses max', evidence: 'src/a.ts:8' })
+
+  // A long trail of evidence is cut at a word, and a reply leaves it out rather than quote it.
+  const trail = `src/webhooks.js:16 (old line was unconditional); ${'src/webhooks.js:3 MAX_ATTEMPTS = 5 '.repeat(8)}`
+  const long = parseVerdict(JSON.stringify({ verdict: 'decline', reason: 'predates this PR', evidence: trail, change: '' }))
+  expect(long.evidence.length).toBeLessThanOrEqual(200)
+  expect(long.evidence.endsWith('5…')).toBe(true)
+  const row: ThreadRow = { id: 'T1', commentId: 1, author: 'bot', isBot: true, path: 'a.ts', line: 1, body: '', url: '', isResolved: false, verdict: long, briefedRound: null, fixedInSha: null, reply: null }
+  expect(replyFor(row)).toBe('Not changing this: predates this PR')
+  expect(replyFor({ ...row, verdict: { ...long, evidence: 'src/webhooks.js:16' } })).toBe('Not changing this: predates this PR (src/webhooks.js:16)')
   expect(parseVerdict('{"verdict": "yolo", "reason": "x"}').kind).toBe('needs-human')
 })
 
@@ -211,6 +237,9 @@ test('flipping a verdict, the drift hint, the hint label and a file diff', () =>
 
   expect(hintLabel(null)).toBe('🔔 no PR')
   expect(hintLabel(watchOf({ checks: [{ name: 'a', state: 'passed', isRequired: false, runId: null }, { name: 'b', state: 'pending', isRequired: false, runId: null }], reviewers: [{ login: 'bot', state: 'waiting' }] }))).toBe('🔔 #42 CI 1/2 · reviews 0/1')
+
+  expect(logLines('test\tRun npm test\t2026-10-03T23:13:45.0011177Z # fail 2\ntest\tRun npm test\t2026-10-03T23:13:45.0101325Z ##[error]Process completed with exit code 1.\n'))
+    .toBe('# fail 2\n##[error]Process completed with exit code 1.')
 
   const diff = 'diff --git a/src/a.ts b/src/a.ts\n+one\ndiff --git a/src/b.ts b/src/b.ts\n+two\n'
   expect(fileDiff(diff, 'src/b.ts')).toBe('diff --git a/src/b.ts b/src/b.ts\n+two\n')
@@ -261,12 +290,14 @@ test('a PR Claude raises is watched, and failing CI is briefed with its log once
   const w = world(on)
   w.poll = { checks: [{ name: 'test', conclusion: 'FAILURE', runId: 7 }] }
   await $.tool.call({ tool: 'Bash', command: 'gh pr create --fill' })
+  // The watch starts on a timer, after the tool call's turn is no longer held.
+  await w.clock.advance(1)
   await w.clock.settle()
 
   expect(w.submitted).toHaveLength(1)
   expect(w.submitted[0]).toContain('🔔 Closing Time: CI failed on PR #42 at aaaaaaa.')
   expect(w.submitted[0]).toContain('- `test` (attempt 1 of 2)')
-  expect(w.submitted[0]).toContain('<ci-log check="test">\n##[error] expected 3 to equal 4')
+  expect(w.submitted[0]).toContain('<ci-log check="test">\n##[error] expected 3 to equal 4\n  at limits.test.ts:12\n</ci-log>')
   expect(w.submitted[0]).toContain('push to `feat/limits` (never force-push)')
   // Not a flake by the log, so nothing was rerun.
   expect(w.ran.some(a => a[1] === 'run' && a[2] === 'rerun')).toBe(false)
@@ -276,6 +307,8 @@ test('a comment triage cannot weigh goes to the person; their flips drive the fi
   const w = world(on)
   w.poll = { checks: [{ name: 'test' }], reviews: [{ login: 'coderabbitai', sha: 'aaaaaaa1' }], threads: [{ id: 'T1', author: 'coderabbitai', body: 'Rename `max` to `maximum`.' }] }
   await $.tool.call({ tool: 'Bash', command: 'gh pr create --fill' })
+  // The watch starts on a timer, after the tool call's turn is no longer held.
+  await w.clock.advance(1)
   await w.clock.settle()
 
   // The triage agent is given the comment quoted as data and the file's diff.
@@ -305,6 +338,19 @@ test('a comment triage cannot weigh goes to the person; their flips drive the fi
   ]])
   // A declined thread stays open for a human to judge.
   expect(w.ran.some(a => a.some(x => x.includes('resolveReviewThread')))).toBe(false)
+})
+
+test('/ship asks Claude to raise the PR only once the command is done', async ($, on) => {
+  const w = world(on)
+  const { text } = await $.command.run({ command: 'ship', args: 'mention the 30s cap', origin: { kind: 'composer' }, presentation: { isFullscreen: false, columns: 100 } })
+  expect(text).toBe('🔔 Asked Claude to raise the PR; Closing Time watches it once it exists.')
+  // From inside the command a submit would wait on the turn the command holds, so nothing goes yet.
+  expect(w.submitted).toEqual([])
+  await w.clock.advance(1)
+  await w.clock.settle()
+  expect(w.submitted).toHaveLength(1)
+  expect(w.submitted[0]).toContain('run `gh pr create`')
+  expect(w.submitted[0]).toContain('Also: mention the 30s cap')
 })
 
 test('its hint item joins the shared row, and the pane draws on every surface', async ($, on) => {
