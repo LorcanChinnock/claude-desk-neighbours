@@ -1,7 +1,7 @@
 import { expect, mock, test } from 'claude-code/testing'
 import type { On } from 'claude-code'
 
-import { looksLikeAsk } from '../hooks/register'
+import { looksLikeAsk, toServe } from '../hooks/register'
 
 const USAGE = { input_tokens: 1, output_tokens: 1, cache_read_input_tokens: 0, cache_creation_input_tokens: 0 }
 const BAND = {
@@ -48,6 +48,21 @@ test('only answers that end by asking are read', async () => {
   expect(looksLikeAsk(ASKED)).toBe(true)
   expect(looksLikeAsk('Done. The tests pass.')).toBe(false)
   expect(looksLikeAsk('Two ways:\n1. keep it\n2. drop it')).toBe(true)
+})
+
+test('the question and answer labels show whole, up to 200 and 40 characters', () => {
+  const question = 'Which approach do you want: replace the cache with a Postgres check, delete it, or keep it as a fast path?'
+  expect(toServe({ needsInput: true, question, options: [] })?.question).toBe(question)
+  const serve = toServe({
+    needsInput: true,
+    question: 'Where should formatMinor live?',
+    options: [
+      { label: 'Keep it in src/money.js', reply: 'Keep it in src/money.js.' },
+      { label: 'Move it to its own file under src/format', reply: 'Move it.' },
+    ],
+  })
+  expect(serve?.options.map(o => o.label)).toEqual(['Keep it in src/money.js', 'Move it to its own file under src/format'])
+  expect(toServe({ needsInput: true, question: 'Q?', options: [{ label: 'x'.repeat(60), reply: 'x' }] })?.options[0]?.label).toHaveLength(40)
 })
 
 test('a question becomes the top band line, and an option fills the prompt', async ($, on) => {

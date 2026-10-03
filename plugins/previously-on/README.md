@@ -2,6 +2,8 @@
 
 Catches you up when you come back.
 
+![After 20 minutes away, the first keystroke brings up a recap of the session; 0 dismisses it](../../docs/screenshots/previously-on.gif)
+
 ```
 /plugin install previously-on@lorcan-plugins
 ```
@@ -18,13 +20,9 @@ Catches you up when you come back.
   ```
 
   It's made once per return and reused if nothing has changed. It clears when you send a prompt, or press
-  Dismiss: `0` in an empty prompt, or a click. Typing one key after 20 minutes away:
+  Dismiss: `0` in an empty prompt, or a click. The recap from the demo above, under a Your Serve question:
 
-  ![A return recap: done and pending lines, with 0: Dismiss](../../docs/screenshots/previously-return.png)
-
-  The same recap on demand (**Recap now** in the pane), here while a Your Serve question was waiting:
-
-  ![A recap under a Your Serve question: waiting on you, keep formatMinor in money.js or move it; done; pending](../../docs/screenshots/previously-recap.png)
+  ![A recap under a Your Serve question: waiting on you, update the webhook tests to a 250ms base; done; pending](../../docs/screenshots/previously-recap.png)
 - **Morning digest.** The first session of your day shows the last day's sessions, once:
 
   ```
@@ -40,7 +38,7 @@ Catches you up when you come back.
 Click `📺 on air` in the status row, or run `/previously-on`: today's and the last day's sessions, **Recap now**
 (`r`) and **Copy standup** (`c`).
 
-![The Previously On pane: today's session, with Recap now and Copy standup buttons](../../docs/screenshots/previously-pane.png)
+![The Previously On pane: today's sessions, wrapped to fit, with Recap now and Copy standup buttons](../../docs/screenshots/previously-pane.png)
 
 ## Settings
 

@@ -25,8 +25,10 @@ const EXTRACT_SYSTEM = [
   "You read the end of a coding assistant's reply and decide whether it is waiting on the user for",
   'an answer or a decision before it can go on. Reply with JSON only:',
   '{"needsInput": boolean, "question": string, "options": [{"label": string, "reply": string}]}.',
-  '"question": the single thing the user must answer, at most 80 characters, ending in "?".',
-  '"options": at most 3 distinct answers the reply offers; "label" at most 14 characters ("Keep"),',
+  '"question": the single thing the user must answer, at most 80 characters, ending in "?", naming what',
+  'is being decided ("Keep the old cache or drop it?"), never only option numbers ("1, 2 or 3?").',
+  '"options": at most 3 distinct answers the reply offers; "label" at most 14 characters naming the',
+  'choice itself ("Keep", "Cap at 30s"), never only its number ("Option 1");',
   '"reply" how the user would say it, first person, one short sentence ("Keep the old cache.").',
   'Leave "options" empty when there are no clear choices. "needsInput" is false for statements,',
   'summaries, rhetorical questions and offers that need no answer to finish the work.',
@@ -56,7 +58,7 @@ function clip(text: string, max: number): string {
 
 export function toServe(verdict: Record<string, unknown> | null): Serve | null {
   if (verdict === null || verdict.needsInput !== true || typeof verdict.question !== 'string') return null
-  const question = clip(verdict.question, 80)
+  const question = clip(verdict.question, 200)
   if (question === '') return null
   const raw = Array.isArray(verdict.options) ? verdict.options : []
   const options: ServeOption[] = []
@@ -64,7 +66,7 @@ export function toServe(verdict: Record<string, unknown> | null): Serve | null {
     if (typeof one !== 'object' || one === null) continue
     const { label, reply } = one as Record<string, unknown>
     if (typeof label !== 'string' || typeof reply !== 'string' || label.trim() === '' || reply.trim() === '') continue
-    options.push({ label: clip(label, 14), reply: reply.replace(/\s+/g, ' ').trim() })
+    options.push({ label: clip(label, 40), reply: reply.replace(/\s+/g, ' ').trim() })
     if (options.length === HOTKEYS.length) break
   }
   return { question, options }
@@ -124,6 +126,10 @@ async function reset($: EngineInterface): Promise<void> {
 // a row keyed `desk-hint` after the engine's own hint; items are kept in order by their keys
 // (`desk-1-…` to `desk-5-…`), so the row reads the same alone or together, in any load order.
 const DESK = 'desk-hint'
+
+// The engine draws the band's collapse mark `[-]` over the right end of its first row without
+// narrowing `bodyColumns`, so band rows stop this many cells short of the edge.
+const MARKER = 4
 
 function keyOf(node: RenderNode | undefined): string {
   if (typeof node !== 'object' || node === null || !('props' in node)) return ''
@@ -200,12 +206,13 @@ export const register: Register = (on, options) => {
     const { Box, Text, Button } = $.ui.resolve(e)
     return (
       <Box flexDirection="column">
-        <Box flexDirection="row" width={e.props.bodyColumns}>
+        {/* Wraps rather than truncates: answers you can't read are no use. */}
+        <Box flexDirection="row" flexWrap="wrap" columnGap={2} width={e.props.bodyColumns - MARKER}>
           <Box flexShrink={1}>
-            <Text wrap="truncate-end">🎾 Your serve: {shown.question}</Text>
+            <Text>🎾 Your serve: {shown.question}</Text>
           </Box>
           {shown.options.length > 0 && (
-            <Box flexShrink={0} marginLeft={2} gap={1}>
+            <Box flexShrink={0} flexWrap="wrap" gap={1}>
               {shown.options.map((option, index) => (
                 <Button
                   key={`serve-${index + 1}`}
@@ -247,7 +254,7 @@ export const register: Register = (on, options) => {
           <Text bold>🎾 Your Serve</Text>
           <Text dimColor> · {shown === null ? 'nothing waiting on you' : 'waiting on you'}</Text>
         </Box>
-        {shown !== null && <Text wrap="truncate-end">{shown.question}</Text>}
+        {shown !== null && <Text>{shown.question}</Text>}
         {shown !== null && shown.options.length > 0 && (
           <Box flexDirection="row" gap={1} marginTop={1}>
             {shown.options.map((option, index) => (
@@ -271,7 +278,7 @@ export const register: Register = (on, options) => {
                   <Text dimColor>{clockTime(asked.at)}</Text>
                 </Box>
                 <Box flexShrink={1}>
-                  <Text wrap="truncate-end">{asked.question}</Text>
+                  <Text>{asked.question}</Text>
                 </Box>
               </Box>
             ))}

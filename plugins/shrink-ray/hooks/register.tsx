@@ -286,6 +286,10 @@ async function reset($: EngineInterface): Promise<void> {
 // (`desk-1-…` to `desk-5-…`), so the row reads the same alone or together, in any load order.
 const DESK = 'desk-hint'
 
+// The engine draws the band's collapse mark `[-]` over the right end of its first row without
+// narrowing `bodyColumns`, so band rows stop this many cells short of the edge.
+const MARKER = 4
+
 function keyOf(node: RenderNode | undefined): string {
   if (typeof node !== 'object' || node === null || !('props' in node)) return ''
   const key = (node.props as Record<string, unknown> | undefined)?.key
@@ -367,14 +371,15 @@ export const register: Register = on => {
     return (
       <Box flexDirection="column">
         {below}
-        <Box flexDirection="row" width={e.props.bodyColumns}>
+        {/* Wraps rather than truncates, so the line and its button always show whole. */}
+        <Box flexDirection="row" flexWrap="wrap" columnGap={2} width={e.props.bodyColumns - MARKER}>
           <Box flexShrink={1}>
-            <Text wrap="truncate-end">
+            <Text>
               🔫 Shrunk {grouped(held.before)} → {grouped(held.after)} lines
             </Text>
           </Box>
           {/* Digits press from an empty prompt; the Desk Neighbours split them so none clash (Shrink Ray 9). */}
-          <Box flexShrink={0} marginLeft={2}>
+          <Box flexShrink={0}>
             <Button key="shrink-undo" hotkey="9" plain label="Undo" onPress={() => void undoPaste($)} />
           </Box>
         </Box>
@@ -419,7 +424,7 @@ export const register: Register = on => {
               <Text>{shot.kind}</Text>
             </Box>
             <Box flexGrow={1} flexShrink={1}>
-              <Text wrap="truncate-end">
+              <Text>
                 {grouped(shot.before)} → {grouped(shot.after)} lines
               </Text>
             </Box>
