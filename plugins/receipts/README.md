@@ -11,7 +11,9 @@ Checks claims and leftovers: "fixed" with nothing run since the last edit, and t
 ## How it works
 
 Receipts watches every file edit and every shell command. It learns each repo's check command (tests,
-typecheck, lint or build) from the last one that passed, and remembers it across sessions.
+typecheck, lint or build) from the last one that passed, and remembers it across sessions. Only the check step is
+kept, as you'd run it again: `git stash && pnpm test 2>&1 | tail -25` is learned as `pnpm test`. A command that
+merely mentions a check, like writing a test file with a heredoc, doesn't count.
 
 - **No receipt.** If a turn edited files and then claims success ("fixed", "tests pass", "done") but nothing that
   checks ran after the last edit, a line appears under the answer:
