@@ -5,7 +5,7 @@ Catches you up when you come back.
 ![After 20 minutes away, the first keystroke brings up a recap of the session; 0 dismisses it](../../docs/screenshots/previously-on.gif)
 
 ```
-/plugin install previously-on@lorcan-plugins
+/plugin install previously-on@claude-desk-neighbours
 ```
 
 ## How it works

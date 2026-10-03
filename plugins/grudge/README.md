@@ -5,7 +5,7 @@ Remembers your corrections, so you only have to say "no, use pnpm" once.
 ![Saying "no, use pnpm, not npm": Grudge offers to hold it while Claude works, and 4 holds it](../../docs/screenshots/grudge.gif)
 
 ```
-/plugin install grudge@lorcan-plugins
+/plugin install grudge@claude-desk-neighbours
 ```
 
 ## How it works
