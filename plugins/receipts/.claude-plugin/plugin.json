@@ -1,6 +1,6 @@
 {
   "name": "receipts",
-  "version": "0.2.1",
+  "version": "0.3.0",
   "description": "🧾 Checks claims and leftovers: notes when Claude says done with nothing run since its last edit, and debug crumbs it added.",
   "author": {
     "name": "Lorcan Chinnock",

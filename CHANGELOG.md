@@ -1,5 +1,16 @@
 # Changelog
 
+## 0.3.0
+
+Desk Neighbours:
+
+- Your Serve asks several questions one at a time. When Claude ends a turn asking more than one thing, the band
+  shows each in turn (`🎾 Your serve (2/3): …`), up to four, and the last answer puts them all in the prompt as one
+  numbered reply. `skip` leaves a question blank there to type. It used to pick one question, and a numbered list
+  of questions read as the options of a single one.
+
+Releases are now cut by release-please from conventional PR titles, so later entries are generated.
+
 ## 0.2.1
 
 Desk Neighbours:
