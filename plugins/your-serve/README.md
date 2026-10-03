@@ -1,6 +1,6 @@
 # 🎾 Your Serve
 
-Tells you when Claude needs you, so the question at the end of a long answer doesn't get missed.
+Lets you know when Claude is waiting on you, so you don't miss the question at the bottom of a long answer.
 
 ![Claude ends a long answer with a question; Your Serve puts it above the prompt with its answers, and 1 fills in the reply](../../docs/screenshots/your-serve.gif)
 
@@ -10,23 +10,25 @@ Tells you when Claude needs you, so the question at the end of a long answer doe
 
 ## How it works
 
-When a turn ends with a question, a choice between options, or "should I also…", the band's top line says so:
+When a turn ends with a question, a choice between options, or a "should I also…", it shows up on the top line
+of the band:
 
 ```
 🎾 Your serve: Keep the old cache or drop it?          1: Keep  2: Drop  3: Something else
 ```
 
-Pressing an answer puts a natural reply in your prompt ("Drop the old cache.") for you to send. Type its
-digit into an empty prompt, or click it. With no clear options, the line shows just the question. It stays until
-you send a prompt. Answers that are statements produce nothing, and subagents' turns are ignored.
+Press an answer and a natural-sounding reply ("Drop the old cache.") lands in your prompt, ready to send. You
+can type its digit into an empty prompt or click it. If there aren't any clear options, you just get the
+question. Either way it stays put until you send a prompt. Answers that don't ask anything produce nothing, and
+subagent turns are ignored.
 
-When Claude asks several things at once, the line asks them one at a time, however many there are:
+If Claude asks several things at once, you get them one at a time, however many there are:
 
 ```
 🎾 Your serve (2/3): What should the new timeout be?          1: 30s  2: 60s  skip
 ```
 
-Each answer moves to the next question, and the last one puts them all in your prompt as one reply:
+Each answer takes you to the next question. After the last one, they all go into your prompt as a single reply:
 
 ```
 1. Keep the old cache or drop it? Drop the old cache.
@@ -34,21 +36,22 @@ Each answer moves to the next question, and the last one puts them all in your p
 3. Add a retry? Yes, add a retry.
 ```
 
-A question you skip (or one with no clear options) is left without an answer, for you to type after it before
-sending. Click `skip`: the digits after 3 belong to the other Desk Neighbours.
+If you skip a question, or it had no clear options, it's left unanswered so you can type your own answer after
+it before sending. You have to click `skip` because the digits after 3 belong to the other Desk Neighbours.
 
-The line wraps rather than cutting anything off: when the question and its answers don't fit on one line, the
-answers move to the next. At most three answers get buttons; for any other answer, type it.
+Nothing gets cut off. If the question and its answers don't fit on one line, the answers wrap onto the next one.
+Only three answers get buttons, so for anything else just type it.
 
-Your Serve reads the text of Claude's answer, so a question Claude asks with its own question picker doesn't
-show here. The picker is already in front of you.
+Your Serve reads the text of Claude's answer, so it won't show questions Claude asks through its own question
+picker. You've already got the picker in front of you anyway.
 
-If the turn took longer than a minute, a toast says `🎾 Claude needs a decision` too, in case you'd wandered off.
+If the turn took longer than a minute, you'll also get a `🎾 Claude needs a decision` toast in case you'd
+wandered off.
 
 ## The pane
 
-Click `🎾 ready` in the status row, or run `/your-serve`: the question waiting on you with its answers, and the
-questions Claude asked earlier this session.
+Click `🎾 ready` in the status row, or run `/your-serve`, to see the question waiting on you with its answers,
+plus the questions Claude asked earlier in the session.
 
 ![The Your Serve pane: "Should I run pnpm add debug and make the swap?" waiting, with an earlier question listed below](../../docs/screenshots/your-serve-pane.png)
 
@@ -61,5 +64,5 @@ questions Claude asked earlier this session.
 
 ## In the background
 
-Only answers whose ending has a question mark, an options list or asking phrasing are sent to Haiku, which picks out
-every question and up to three answers for each.
+Haiku only sees answers that end with a question mark, a list of options or something phrased as a question. It
+picks out every question and up to three answers for each one.
