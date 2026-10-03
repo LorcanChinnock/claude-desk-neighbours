@@ -188,3 +188,25 @@ test('originals older than a week are pruned when a session starts', async ($, o
   await w.clock.settle()
   expect(ran).toContainEqual(['find', '/home/me/.claude/shrink-ray', '-type', 'f', '-name', '*.txt', '-mtime', '+7', '-delete'])
 })
+
+test('after /clear the all-time count loads again', async ($, on) => {
+  const clock = mock.clock(on)
+  mock.store(on, { lifetime: 3600 })
+  on('ui.render', ($, e) => {
+    const { Box } = $.ui.resolve(e)
+    return <Box />
+  })
+  on('classic.SessionStart', () => ({}))
+  const header = async () => {
+    const pane = await $.ui.mount({ plugin: 'shrink-ray', surface: 'terminal', component: 'Pane', requestId: 'shrink-ray', props: { title: 'x', isFocused: true, bodyColumns: 90, placement: 'dock', scroll: { offset: 0, bodyRows: 20 }, view: {} } })
+    const text = (await pane.find({ type: 'Text', text: /all time/ }))?.text
+    await pane.unmount()
+    return text
+  }
+
+  // A cleared session's state starts empty, and no session.start fires to fill it.
+  expect(await header()).toMatch(/· 0 all time/)
+  await $.classic.SessionStart({ source: 'clear' })
+  await clock.settle()
+  expect(await header()).toMatch(/· 3\.6k all time/)
+})

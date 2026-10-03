@@ -12,6 +12,9 @@ Desk Neighbours:
 - Your Serve no longer clips answers to 14 characters or the question to 80, and asks Haiku to name each
   choice ("Cap at 30s") rather than number it ("Option 1").
 - Previously On cuts a long session topic at a word break, not mid-word.
+- After `/clear`, the mods load their saved data again. `/clear` starts a session with empty state and runs no
+  `session.start`, so Grudge showed "no grudges", Shrink Ray "0 all time", Receipts forgot the check command and
+  Previously On's pane showed an empty day log until Claude Code restarted.
 
 ## 0.1.1
 

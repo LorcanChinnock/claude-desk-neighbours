@@ -169,3 +169,20 @@ test('its hint item joins the shared row in key order, and a click opens its pan
     await pane.unmount()
   }
 })
+
+test('after /clear the day log loads again', async ($, on) => {
+  const w = world(on, { days: [{ day: localDay(MORNING), sessionId: 'a', repo: 'payments-service', topic: 'webhook retries' }] })
+  on('classic.SessionStart', () => ({}))
+  const today = async () => {
+    const pane = await $.ui.mount({ plugin: 'previously-on', surface: 'terminal', component: 'Pane', requestId: 'previously-on', props: { title: 'x', isFocused: true, bodyColumns: 90, placement: 'dock', scroll: { offset: 0, bodyRows: 20 }, view: {} } })
+    const text = (await pane.findAll({ type: 'Text' })).map(t => t.text).join(' | ')
+    await pane.unmount()
+    return text
+  }
+
+  // A cleared session's state starts empty, and no session.start fires to fill it.
+  expect(await today()).toContain('nothing logged yet')
+  await $.classic.SessionStart({ source: 'clear' })
+  await w.clock.settle()
+  expect(await today()).toContain('payments-service (webhook retries)')
+})

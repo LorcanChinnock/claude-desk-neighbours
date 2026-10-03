@@ -357,6 +357,13 @@ export const register: Register = on => {
     return next(e)
   })
 
+  // `/clear` starts a new session with empty state and fires no `session.start`; its classic
+  // SessionStart (source `clear`) is the one place to load the all-time count again.
+  on('classic.SessionStart', ($, e, next) => {
+    if (e.source === 'clear') void loadLifetime($).catch(() => undefined)
+    return next(e)
+  })
+
   on('session.end', async ($, e, next) => {
     if (e.reason === 'clear' || e.reason === 'resume') await reset($).catch(() => undefined)
     return next(e)
