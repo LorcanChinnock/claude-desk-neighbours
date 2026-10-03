@@ -172,3 +172,18 @@ test('its hint item joins the shared row in key order, and a click opens its pan
     await pane.unmount()
   }
 })
+
+test('originals older than a week are pruned when a session starts', async ($, on) => {
+  const ran: string[][] = []
+  const w = world(on)
+  on('fs.exists', () => ({ value: true }))
+  on('process.run', ($, e) => {
+    ran.push([...e.argv])
+    return { value: { exitCode: 0, stdout: '', stderr: '', isStdoutTruncated: false, isStderrTruncated: false } }
+  })
+  on('session.start', ($, e) => ({ cwd: e.cwd }))
+  on('command.register', ($, e) => ({ value: { command: e.name } }))
+  await $.session.start({ cwd: '/work', surface: 'terminal', isInteractive: true })
+  await w.clock.settle()
+  expect(ran).toContainEqual(['find', '/home/me/.claude/shrink-ray', '-type', 'f', '-name', '*.txt', '-mtime', '+7', '-delete'])
+})

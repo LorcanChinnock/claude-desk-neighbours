@@ -9,9 +9,19 @@ jobs:
   validate:
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v4
-      - uses: actions/setup-node@v4
+      - uses: actions/checkout@v5
+      - uses: actions/setup-node@v5
         with:
           node-version: 22
       - run: npm install -g @anthropic-ai/claude-code
-      - run: claude plugin validate . --strict
+      - name: Validate the marketplace and every plugin
+        run: claude plugin validate . --strict
+      - name: Run each plugin's tests
+        run: |
+          for dir in plugins/*/; do
+            if find "$dir" -name '*.test.ts' -o -name '*.test.tsx' | grep -q .; then
+              echo "::group::${dir}"
+              claude plugin test "$dir"
+              echo "::endgroup::"
+            fi
+          done

@@ -19,6 +19,7 @@ const TITLE = '🔫 Shrink Ray'
 const PASTE_LINES = 80
 const OUTPUT_LINES = 150
 const UNDO_MS = 10_000
+const KEEP_DAYS = 7
 
 type Budget = { head: number; tail: number; errors: number }
 const PASTE: Budget = { head: 12, tail: 12, errors: 15 }
@@ -175,6 +176,17 @@ export function shrink(text: string, budget: Budget, isOutput: boolean): string 
   return shrunk.length < text.length * 0.8 ? shrunk : null
 }
 
+/** Removes originals older than a week. `$.fs` cannot delete, so this asks `find`; where there is
+ * no `find` (Windows) the call fails and the originals stay. */
+async function prune($: EngineInterface): Promise<void> {
+  const home = await $.env.get('HOME')
+  if (home === undefined) return
+  const dir = `${home}/.claude/shrink-ray`
+  if (!(await $.fs.exists(dir))) return
+  await $.process.run(['find', dir, '-type', 'f', '-name', '*.txt', '-mtime', `+${KEEP_DAYS}`, '-delete'])
+  await $.process.run(['find', dir, '-mindepth', '1', '-type', 'd', '-empty', '-delete'])
+}
+
 async function keepOriginal($: EngineInterface, kind: string, text: string): Promise<string> {
   const home = await $.env.get('HOME')
   const stamp = await $.clock.now()
@@ -307,6 +319,7 @@ export const register: Register = on => {
   on('session.start', async ($, e, next) => {
     await $.command.register({ name: 'shrink-ray', description: '🔫 What got shrunk, how much, and where the originals are' })
     void loadLifetime($).catch(() => undefined)
+    void prune($).catch(() => undefined)
     return next(e)
   })
 
