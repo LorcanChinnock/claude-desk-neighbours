@@ -1,0 +1,24 @@
+{
+  "name": "your-serve",
+  "version": "0.1.0",
+  "description": "🎾 Tells you when Claude needs you: one line with the question it ended on, and its answers as buttons.",
+  "author": {
+    "name": "Lorcan Chinnock",
+    "url": "https://github.com/LorcanChinnock"
+  },
+  "types": "./types/index.d.ts",
+  "userConfig": {
+    "toastAfterSeconds": {
+      "type": "number",
+      "title": "Toast after (seconds)",
+      "description": "Also show a toast when a turn that needs you took longer than this.",
+      "default": 60
+    },
+    "speak": {
+      "type": "boolean",
+      "title": "Say it out loud",
+      "description": "Speak \"Claude needs a decision\" along with the toast.",
+      "default": false
+    }
+  }
+}

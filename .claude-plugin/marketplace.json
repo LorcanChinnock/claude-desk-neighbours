@@ -8,5 +8,31 @@
   "metadata": {
     "pluginRoot": "./plugins"
   },
-  "plugins": []
+  "plugins": [
+    {
+      "name": "grudge",
+      "source": "grudge",
+      "description": "😤 Remembers your corrections: offers to hold a lasting preference, reminds Claude of it every session, and fixes commands it can swap safely."
+    },
+    {
+      "name": "your-serve",
+      "source": "your-serve",
+      "description": "🎾 Tells you when Claude needs you: one line with the question it ended on, and its answers as buttons."
+    },
+    {
+      "name": "receipts",
+      "source": "receipts",
+      "description": "🧾 Checks claims and leftovers: notes when Claude says done with nothing run since its last edit, and debug crumbs it added."
+    },
+    {
+      "name": "shrink-ray",
+      "source": "shrink-ray",
+      "description": "🔫 Shrinks what the model reads: big pastes and long command output, with the full original saved outside the project."
+    },
+    {
+      "name": "previously-on",
+      "source": "previously-on",
+      "description": "📺 Catches you up: a recap when you come back to a session, a morning digest of yesterday, and /standup."
+    }
+  ]
 }

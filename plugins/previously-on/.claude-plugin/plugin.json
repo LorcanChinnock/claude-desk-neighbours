@@ -1,0 +1,18 @@
+{
+  "name": "previously-on",
+  "version": "0.1.0",
+  "description": "📺 Catches you up: a recap when you come back to a session, a morning digest of yesterday, and /standup.",
+  "author": {
+    "name": "Lorcan Chinnock",
+    "url": "https://github.com/LorcanChinnock"
+  },
+  "types": "./types/index.d.ts",
+  "userConfig": {
+    "idleMinutes": {
+      "type": "number",
+      "title": "Recap after idle (minutes)",
+      "description": "Show a recap when your first keystroke comes after this long away.",
+      "default": 20
+    }
+  }
+}

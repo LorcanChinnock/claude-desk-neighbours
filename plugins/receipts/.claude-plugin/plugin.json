@@ -1,0 +1,10 @@
+{
+  "name": "receipts",
+  "version": "0.1.0",
+  "description": "🧾 Checks claims and leftovers: notes when Claude says done with nothing run since its last edit, and debug crumbs it added.",
+  "author": {
+    "name": "Lorcan Chinnock",
+    "url": "https://github.com/LorcanChinnock"
+  },
+  "types": "./types/index.d.ts"
+}

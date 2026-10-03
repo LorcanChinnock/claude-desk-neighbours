@@ -1,0 +1,10 @@
+{
+  "name": "shrink-ray",
+  "version": "0.1.0",
+  "description": "🔫 Shrinks what the model reads: big pastes and long command output, with the full original saved outside the project.",
+  "author": {
+    "name": "Lorcan Chinnock",
+    "url": "https://github.com/LorcanChinnock"
+  },
+  "types": "./types/index.d.ts"
+}

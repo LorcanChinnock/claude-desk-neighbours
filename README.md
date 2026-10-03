@@ -19,6 +19,25 @@ claude plugin marketplace update lorcan-plugins
 
 | Plugin | What it does |
 | ------ | ------------ |
+| `grudge` | 😤 Remembers your corrections: offers to hold a lasting preference, reminds Claude of it every session, fixes commands it can swap safely. `/grudges` |
+| `your-serve` | 🎾 Tells you when Claude needs you: the question it ended on, its answers as buttons. `/your-serve` |
+| `receipts` | 🧾 Notes when Claude says done with nothing run since its last edit, and debug crumbs it left. `/receipts` |
+| `shrink-ray` | 🔫 Shrinks big pastes and long command output; full originals saved outside the project. `/shrink-ray` |
+| `previously-on` | 📺 A recap when you come back, a morning digest of yesterday, and `/standup`. `/previously-on` |
+
+The last five are **Desk Neighbours**: mods (function-hook plugins) that each work alone and share the
+band above the prompt and one status row under it when installed together. Click a status item (fullscreen
+terminal) or run its command to open its pane. Install any or all:
+
+```
+/plugin install grudge@lorcan-plugins
+/plugin install your-serve@lorcan-plugins
+/plugin install receipts@lorcan-plugins
+/plugin install shrink-ray@lorcan-plugins
+/plugin install previously-on@lorcan-plugins
+```
+
+Test a mod with `claude plugin test plugins/<name>`.
 
 ## Adding a plugin
 

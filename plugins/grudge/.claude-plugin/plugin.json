@@ -1,0 +1,10 @@
+{
+  "name": "grudge",
+  "version": "0.1.0",
+  "description": "😤 Remembers your corrections: offers to hold a lasting preference, reminds Claude of it every session, and fixes commands it can swap safely.",
+  "author": {
+    "name": "Lorcan Chinnock",
+    "url": "https://github.com/LorcanChinnock"
+  },
+  "types": "./types/index.d.ts"
+}
