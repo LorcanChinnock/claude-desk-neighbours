@@ -17,16 +17,18 @@
   <a href="#-show--tell">📸 Show & Tell</a>
 </p>
 
-Claude Code is great at the work and forgetful about the edges of it: the correction you made yesterday, the
-question buried at the end of a long answer, the "fixed!" with nothing run, the 1,200-line log, the session you
-walked away from. **Desk Neighbours** are six mods that each mind one of those edges. They live in a status row
-under your prompt and speak up in one line above it, only when they have something to say.
+Claude Code does the actual work well. It's the stuff around the work that slips. You correct it and it's
+forgotten by the next session. It asks you something in the last line of a long reply. It says "fixed!" without
+running anything, reads a 1,200-line log in full, and has no way to catch you up when you come back from lunch.
+**Desk Neighbours** are six small mods, one for each of those. They sit in a status row under your prompt and
+only pipe up, in a single line above it, when there's something worth saying.
 
 ```
 /plugin marketplace add LorcanChinnock/claude-plugins
 ```
 
-Then install any of them, or all six. Each works on its own, and they fit together when you have several:
+Then install whichever ones you want. They all work on their own, and they play nicely together if you have more
+than one:
 
 ```
 /plugin install grudge@lorcan-plugins
@@ -41,70 +43,70 @@ Then install any of them, or all six. Each works on its own, and they fit togeth
 
 ## 😤 Grudge
 
-**Remembers your corrections, so you only say "no, use pnpm" once.**
+**Remembers your corrections, so you only have to say "no, use pnpm" once.**
 
 ![Saying "no, use pnpm, not npm": Grudge offers to hold it while Claude works, and 4 holds it](docs/screenshots/grudge.gif)
 
-- **It knows a grudge from a typo.** A short prompt that reads like a correction is judged by Haiku: "use pnpm,
-  not npm" is a lasting preference, "that's the wrong file" is a one-off. Only lasting ones get the offer, and
-  nothing is kept unless you press Hold.
-- **Held rules ride every request** in that repo, so Claude starts each session already knowing them. Personal
-  style, like British spelling, is held everywhere.
-- **Some grudges enforce themselves.** When a rule is an exact command swap (`npm` → `pnpm`, `python` →
-  `python3`, and a few more), Grudge rewrites the command before it runs and leaves a note under the tool call:
-  `😤 grudge #1: npm → pnpm`. It only swaps where the arguments mean the same thing.
-- `/grudges` lists what it's holding, with how often each was enforced, and a Forgive button.
+- Short prompts that look like corrections go to Haiku, which decides whether you've stated a lasting preference
+  ("use pnpm, not npm") or a one-off ("that's the wrong file"). You only get offered the lasting ones, and nothing
+  is saved unless you press Hold.
+- Held rules get sent with every request in that repo, so Claude already knows them when a session starts.
+  Personal style, like British spelling, applies in every repo.
+- If a rule is a straight command swap (`npm` → `pnpm`, `python` → `python3` and a few others), Grudge rewrites
+  the command before it runs and leaves a note under the tool call: `😤 grudge #1: npm → pnpm`. It only does this
+  where the arguments mean the same thing for both commands.
+- `/grudges` shows what it's holding, how many times each rule has been enforced, and a Forgive button.
 
 [Everything Grudge does →](plugins/grudge)
 
 ## 🎾 Your Serve
 
-**Tells you when Claude needs you, so the question at the end of a long answer doesn't get missed.**
+**Lets you know when Claude is waiting on you, so you don't miss the question at the bottom of a long answer.**
 
 ![Claude ends a long answer with a question; Your Serve puts it above the prompt with its answers, and 1 fills in the reply](docs/screenshots/your-serve.gif)
 
-- **The question, pulled out.** When a turn ends by asking something, Haiku picks out the one thing you need to
-  answer and up to three answers, each labelled with the choice itself ("Add 30s cap", not "Option 2").
-- **Answers are buttons, not sends.** Press `1`, `2` or `3` and a natural reply lands in your prompt, ready to
-  edit or send. Nothing goes to Claude until you send it.
-- **It finds you if you wandered off.** If the turn took over a minute, you also get a toast, and on macOS it can
-  say "Claude needs a decision" out loud.
-- Statements and subagents' turns are ignored, so it only speaks up when the ball is in your court.
+- When a turn ends by asking you something, Haiku pulls out what you need to answer and up to three possible
+  answers. Each answer is labelled with the choice itself ("Add 30s cap"), not "Option 2".
+- Pressing `1`, `2` or `3` drops a natural-sounding reply into your prompt for you to edit or send. Nothing
+  reaches Claude until you send it.
+- If the turn took more than a minute you also get a toast, and on macOS it can say "Claude needs a decision" out
+  loud.
+- It ignores plain statements and subagent turns, so it only speaks up when it's actually your move.
 
 [Everything Your Serve does →](plugins/your-serve)
 
 ## 🧾 Receipts
 
-**Checks claims and leftovers: "fixed" with nothing run since the last edit, and the debug lines left behind.**
+**Catches "fixed" when nothing has run since the last edit, along with any debug lines left behind.**
 
 ![Claude adds a console.log and says it didn't run anything; Receipts flags the crumb, and 7 fills in a prompt to sweep it](docs/screenshots/receipts.gif)
 
-- **No receipt, no credit.** If a turn edited files and then says "done", "fixed" or "tests pass" with nothing
-  that checks run since the last edit, Receipts says so under the answer, and `6` fills in a prompt to run the
-  check.
-- **It learns your check command** per repo from the last test, typecheck, lint or build that passed, and
-  remembers it across sessions.
-- **Crumbs.** `console.log`, `debugger`, `.only(`, `fit(`, `binding.pry`, `dbg!` and new `TODO`s in lines Claude
-  added this turn. `7` fills in a prompt to sweep them.
-- **It escalates politely.** After the second missing receipt in a session it offers to make "always run the
-  tests before saying done" a rule, and if Grudge is installed, Grudge offers to hold it.
+- If a turn edits files and then says "done", "fixed" or "tests pass" when nothing that checks the work has run
+  since the last edit, Receipts points it out under the answer. Press `6` to fill in a prompt asking Claude to
+  run the check.
+- It works out each repo's check command from the last test, typecheck, lint or build that passed, and remembers
+  it between sessions.
+- It also looks for crumbs in the lines Claude added this turn: `console.log`, `debugger`, `.only(`, `fit(`,
+  `binding.pry`, `dbg!` and new `TODO`s. `7` fills in a prompt to clean them up.
+- The second time in a session that a receipt is missing, it offers to make "always run the tests before saying
+  done" a rule. If you have Grudge installed, Grudge will offer to hold it.
 
 [Everything Receipts does →](plugins/receipts)
 
 ## 🔫 Shrink Ray
 
-**Shrinks what Claude reads: the 1,240-line CI log becomes the 30 lines that matter.**
+**Cuts a 1,240-line CI log down to the 30 lines Claude actually needs.**
 
 ![A 272-line test run reaches Claude as 50 lines; Claude reads the saved original for the totals, then the pane lists the shrink](docs/screenshots/shrink-ray.gif)
 
-- **Command output over 150 lines reaches Claude shrunk.** Colour codes and progress bars go, repeated lines
-  collapse into `×37`, and passing tests drop out. Failures, every error-looking line and the exit code always
-  stay, along with the beginning and the end.
-- **Nothing is lost.** The full output is saved, and Claude gets its path, so it can read the rest when it needs
-  to. Originals are cleaned up after seven days.
-- **It keeps score.** The status row counts tokens deflected (`🔫 1.8k deflected`), and `/shrink-ray` lists each
-  shrink with a button to copy its original's path.
-- No model calls: it's all local text processing.
+- Command output over 150 lines gets shrunk before Claude sees it. Colour codes and progress bars are stripped,
+  repeated lines collapse into `×37`, and passing tests are dropped. Failures, anything that looks like an error,
+  the exit code, and the start and end of the output are always kept.
+- The full output is saved and Claude gets the path, so it can go and read the rest if it needs to. Originals
+  are cleaned up after seven days.
+- The status row keeps a running count of tokens saved (`🔫 1.8k deflected`), and `/shrink-ray` lists every
+  shrink with a button to copy the original's path.
+- It makes no model calls. Everything happens locally.
 
 [Everything Shrink Ray does →](plugins/shrink-ray)
 
@@ -114,28 +116,29 @@ Then install any of them, or all six. Each works on its own, and they fit togeth
 
 ![After 20 minutes away, the first keystroke brings up a recap of the session; 0 dismisses it](docs/screenshots/previously-on.gif)
 
-- **"Previously on…"** Your first keystroke after 20 idle minutes brings up a short recap: what's waiting on you,
-  what's done, what's pending. It's made once per return and reused if nothing has changed.
-- **A morning digest.** The first session of your day shows what you worked on last time, across repos.
-- **`/standup`** prints yesterday's and today's sessions, ready to paste into a standup channel.
+- After 20 minutes idle, your first keystroke brings up a short "Previously on…" recap of what's waiting on you,
+  what's done and what's still pending. It's generated once each time you come back, and reused if nothing has
+  changed.
+- The first session of your day shows what you worked on last time, across all your repos.
+- `/standup` prints yesterday's and today's sessions so you can paste them straight into your standup channel.
 - It keeps one short line per session, for two weeks.
 
 [Everything Previously On does →](plugins/previously-on)
 
 ## 📸 Show & Tell
 
-**Shows you the pictures: a thumbnail the moment you paste a screenshot, and a gallery of every image in the session.**
+**Shows a thumbnail as soon as you paste a screenshot, and keeps a gallery of every image in the session.**
 
 ![A pasted screenshot of a broken checkout shows as a thumbnail before sending; Claude fixes it and snapshots the page, and /gallery shows both](docs/screenshots/show-and-tell.gif)
 
-- **A thumbnail on paste.** Press `ctrl+v` with a screenshot on the clipboard and it appears above the prompt
-  straight away, before you send. It goes when you send, or after 20 seconds.
-- **Claude's pictures too.** Images Claude reads, screenshots from browser and MCP tools, and pictures it writes
-  or makes with a command (`playwright screenshot`, a chart script) show up the same way.
-- **`/gallery`** lists them all, newest first, with a big preview and buttons to open one, put `@path` in your
+- Hit `ctrl+v` with a screenshot on your clipboard and a thumbnail shows up above the prompt straight away,
+  before you've sent anything. It disappears when you send, or after 20 seconds.
+- Claude's pictures show up the same way: images it reads, screenshots from browser and MCP tools, and anything
+  it writes or generates with a command (`playwright screenshot`, a chart script).
+- `/gallery` lists them all, newest first, with a big preview. From there you can open one, put `@path` in your
   prompt, copy its path or show it in its folder.
-- Pictures draw in terminals that support the kitty graphics protocol, such as Ghostty and kitty. Other terminals,
-  tmux and the desktop app show the same rows in words.
+- Pictures only render in terminals that support the kitty graphics protocol, like Ghostty and kitty. Other
+  terminals, tmux and the desktop app show the same rows as text.
 
 [Everything Show & Tell does →](plugins/show-and-tell)
 
@@ -143,32 +146,32 @@ Then install any of them, or all six. Each works on its own, and they fit togeth
 
 ## How they work together
 
-**A status row** under the prompt, one item per installed neighbour, always in the same order. Click one, or
-run its command, to open its pane; open several and they become tabs. Esc closes a pane.
+There's a status row under the prompt with one item for each neighbour you've installed, always in the same
+order. Click an item, or run its command, to open its pane. Open a few and they turn into tabs. Esc closes a pane.
 
 ```
 ? for shortcuts   😤 3 grudges  🎾 ready  🧾 2 unchecked  🔫 12.4k deflected  📺 on air  📸 4
 ```
 
-**The band** above the prompt, only when a neighbour has something to say. One line each, Your Serve on top,
-and lines wrap rather than cut anything off:
+When a neighbour has something to tell you, it gets a line in the band above the prompt. Your Serve always goes
+on top, and long lines wrap instead of getting cut off:
 
 ![Claude Code with all five neighbours: a Your Serve question and a Previously On recap in the band, the status row below](docs/screenshots/previously-recap.png)
 
-**Buttons never send anything.** They put text in your prompt for you to read, edit and send. Type a button's
-digit into an empty prompt, or click it; with text already in the prompt, press `ctrl+x tab` first. Each
-neighbour has its own digits, so they never clash. Show & Tell's band buttons have no digit; click them, or open
-the gallery and use its letters:
+Buttons never send anything. They put text in your prompt so you can read it, change it and send it yourself.
+To press one, type its digit into an empty prompt or click it. If there's already text in the prompt, press
+`ctrl+x tab` first. Each neighbour has its own digits, so they never clash. Show & Tell's band buttons don't have
+digits, so either click them or open the gallery and use its letter keys:
 
 | Your Serve | Grudge | Receipts | Shrink Ray | Previously On |
 |---|---|---|---|---|
 | `1` `2` `3` | `4` `5` | `6` `7` `8` | `9` | `0` |
 
-Lines clear when you send your next prompt.
+The band clears when you send your next prompt.
 
 ## Settings
 
-Change these in `/config`, or with `/plugin configure <plugin>@lorcan-plugins`.
+You can change these in `/config`, or with `/plugin configure <plugin>@lorcan-plugins`.
 
 | Plugin | Setting | Default |
 |---|---|---|
@@ -179,31 +182,34 @@ Change these in `/config`, or with `/plugin configure <plugin>@lorcan-plugins`.
 
 ## What runs in the background
 
-Worth knowing before you install:
+Here's what goes on behind the scenes, so you know before you install:
 
-- **Model calls on your account.** Grudge, Your Serve, Receipts and Previously On ask a small model (Haiku) short
-  questions: is this a lasting correction, what is Claude asking, does this answer claim it's done, what was this
-  session about. Each runs only after a cheap local check passes, so a typical turn makes none. Previously On's
-  recap re-reads the session transcript once per return, served mostly from the prompt cache.
-- **Files on disk.** Shrink Ray keeps full originals in `~/.claude/shrink-ray/` so Claude can read them if it
-  needs to. Show & Tell keeps copies of pasted and tool images in `~/.claude/show-and-tell/`, and runs `cp`,
-  `sips` or `magick` to copy and convert them. Both remove files older than seven days at session start (macOS and
-  Linux).
-- **Stored data.** Each plugin keeps a small store in your Claude Code config directory: Grudge its rules,
-  Receipts each repo's check command, Shrink Ray a lifetime counter, Previously On a one-line-per-session log for
-  two weeks. Uninstalling a plugin leaves its store in place.
+- **Model calls on your account.** Grudge, Your Serve, Receipts and Previously On send short questions to a small
+  model (Haiku): is this a lasting correction, what is Claude asking, is this answer claiming it's done, what was
+  this session about. Each call only happens after a cheap local check passes, so most turns don't make any.
+  Previously On's recap re-reads the session transcript once each time you come back, mostly from the prompt
+  cache.
+- **Files on disk.** Shrink Ray saves full originals in `~/.claude/shrink-ray/` so Claude can read them if it
+  needs to. Show & Tell keeps copies of pasted and tool images in `~/.claude/show-and-tell/`, and uses `cp`,
+  `sips` or `magick` to copy and convert them. Both delete files older than seven days when a session starts
+  (macOS and Linux).
+- **Stored data.** Each plugin keeps a small store in your Claude Code config directory. Grudge keeps its rules
+  there, Receipts each repo's check command, Shrink Ray a lifetime counter, and Previously On a log with one line
+  per session going back two weeks. Uninstalling a plugin doesn't delete its store.
 - Nothing is sent anywhere else.
 
 ## Requirements
 
-Desk Neighbours are mods: plugins written against Claude Code's function-hook API, which is in early access.
-They are built and tested on Claude Code 2.1.288. The API can change between releases, so a newer Claude Code may
-need a newer version of these plugins. If a mod seems to do nothing, `claude --debug` logs why it didn't load;
-please [open an issue](https://github.com/LorcanChinnock/claude-plugins/issues) with that line.
+Desk Neighbours are mods, which means they're plugins written against Claude Code's function-hook API. That API
+is still in early access. They're built and tested on Claude Code 2.1.288, and since the API can change between
+releases, a newer Claude Code might need a newer version of these plugins. If a mod doesn't seem to be doing
+anything, `claude --debug` will log why it didn't load. Please
+[open an issue](https://github.com/LorcanChinnock/claude-plugins/issues) and include that line.
 
 ## Updating
 
-Third-party marketplaces don't update on their own unless you turn on auto-update in `/plugin` → Marketplaces:
+Third-party marketplaces don't update by themselves unless you turn on auto-update in `/plugin` → Marketplaces.
+To update by hand:
 
 ```
 claude plugin marketplace update lorcan-plugins
@@ -220,7 +226,8 @@ claude plugin test plugins/<name>          # a mod's tests
 claude --plugin-dir plugins/<name>         # try one in a session, reloading on save
 ```
 
-CI runs both on every push and pull request. See [CHANGELOG.md](CHANGELOG.md) for what changed.
+CI runs the first two on every push and pull request. [CHANGELOG.md](CHANGELOG.md) has the history of what's
+changed.
 
 ## License
 
