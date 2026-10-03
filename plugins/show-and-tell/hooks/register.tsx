@@ -22,6 +22,10 @@ const MAX_SHOTS = 200
 const MAX_READ = 4 * 1024 * 1024
 const THUMB_COLUMNS = 16
 const PREVIEW_COLUMNS = 72
+const GALLERY_ROWS = 24
+const GALLERY_COLUMNS = 90
+// From this width the preview sits beside the details and the list, not above them.
+const SIDE_BY_SIDE = 70
 const SCAN_DIRS = 40
 
 const PICTURE = /\.(png|jpe?g|gif|webp|bmp|tiff?|heic|svg|pdf)$/i
@@ -256,9 +260,12 @@ async function loadManifest($: EngineInterface): Promise<void> {
 }
 
 async function addShot($: EngineInterface, shot: Shot, isFresh: boolean): Promise<void> {
-  await update($, shots, list =>
-    [shot, ...list.filter(s => s.id !== shot.id && (shot.source === 'you' || s.path !== shot.path))].slice(0, MAX_SHOTS),
-  )
+  await update($, shots, list => {
+    const same = (s: Shot) => s.id === shot.id || (shot.source !== 'you' && s.source !== 'you' && s.path === shot.path)
+    // Claude often reads back a picture it just made; it stays one Claude made.
+    const wasMade = shot.source === 'claude-read' && list.some(s => same(s) && s.source === 'claude-made')
+    return [{ ...shot, source: wasMade ? 'claude-made' : shot.source }, ...list.filter(s => !same(s))].slice(0, MAX_SHOTS)
+  })
   await saveManifest($)
   if (!isFresh) return
   await update($, fresh, ids => [shot.id, ...ids.filter(id => id !== shot.id)].slice(0, 8))
@@ -418,14 +425,27 @@ export function joinDesk(below: RenderElement, mine: RenderElement, wrap: (child
   return { ...below, children: line === undefined ? sorted : [line, ...sorted] }
 }
 
-/** Opens this mod's pane, or closes it when it is the one showing. */
-async function togglePane($: EngineInterface, id: string, title: string): Promise<void> {
-  const pane = (await $.ui.panes()).find(p => p.id === id)
+/** Opens the gallery. Inline it would get a third of the height; a picture needs more. */
+async function openGallery($: EngineInterface): Promise<void> {
+  await $.ui.open({ id: PANE, title: TITLE, focus: true, closeOnEscape: true, rows: GALLERY_ROWS, columns: GALLERY_COLUMNS })
+}
+
+/** Opens the gallery, or closes it when it is the one showing. */
+async function togglePane($: EngineInterface): Promise<void> {
+  const pane = (await $.ui.panes()).find(p => p.id === PANE)
   if (pane?.isShown === true) {
-    await $.ui.close({ id })
+    await $.ui.close({ id: PANE })
     return
   }
-  await $.ui.open({ id, title, focus: true, closeOnEscape: true })
+  await openGallery($)
+}
+
+/** The box a picture fills: `columns` wide unless that would make it taller than `maxRows`,
+ * then as wide as `maxRows` allows, keeping its shape. */
+export function fitPicture(width: number | null, height: number | null, columns: number, maxRows: number): { columns: number; rows: number } {
+  const rows = rowsFor(width, height, columns, maxRows)
+  if (width === null || height === null || Math.round((columns * height) / width / 2) <= maxRows) return { columns, rows }
+  return { columns: Math.max(1, Math.min(columns, Math.round((maxRows * 2 * width) / height))), rows: maxRows }
 }
 
 function sizeText(shot: Shot): string {
@@ -446,7 +466,7 @@ export const register: Register = (on, options) => {
   })
 
   on('command.run', { command: 'gallery' }, async $ => {
-    await $.ui.open({ id: PANE, title: TITLE, focus: true, closeOnEscape: true })
+    await openGallery($)
     return { text: '📸 Gallery open. Esc closes.' }
   })
 
@@ -557,7 +577,7 @@ export const register: Register = (on, options) => {
             ))}
             <Box flexDirection="column" flexShrink={0}>
               {showing.length > fits && <Text dimColor>+{showing.length - fits} more</Text>}
-              <Button key="band-gallery" plain label="Gallery" onPress={() => void $.ui.open({ id: PANE, title: TITLE, focus: true, closeOnEscape: true })} />
+              <Button key="band-gallery" plain label="Gallery" onPress={() => void openGallery($)} />
               <Button key="band-dismiss" plain dimColor label="Dismiss" onPress={() => void $.state.set(FRESH, [])} />
             </Box>
           </Box>
@@ -577,7 +597,7 @@ export const register: Register = (on, options) => {
             </Text>
           </Box>
           <Box flexShrink={0}>
-            <Button key="band-gallery" plain label="Gallery" onPress={() => void $.ui.open({ id: PANE, title: TITLE, focus: true, closeOnEscape: true })} />
+            <Button key="band-gallery" plain label="Gallery" onPress={() => void openGallery($)} />
           </Box>
         </Box>
       </Box>
@@ -589,7 +609,7 @@ export const register: Register = (on, options) => {
     const label = n === 0 ? '📸 gallery' : `📸 ${n}`
     const below = await next(e)
     const { Box, Button } = $.ui.resolve(e)
-    const mine = <Button key="desk-6-show-and-tell" plain dimColor label={label} onPress={() => void togglePane($, PANE, TITLE)} />
+    const mine = <Button key="desk-6-show-and-tell" plain dimColor label={label} onPress={() => void togglePane($)} />
     return joinDesk(below, mine, children => (
       <Box key={DESK} flexDirection="row" columnGap={2}>
         {children}
@@ -603,69 +623,109 @@ export const register: Register = (on, options) => {
     const pickedId = await read($, picked)
     const list = all.filter(s => which === 'all' || (which === 'you' ? s.source === 'you' : s.source !== 'you'))
     const current = list.find(s => s.id === pickedId) ?? list[0]
-    const columns = Math.min(e.props.bodyColumns - 2, PREVIEW_COLUMNS)
+    const { bodyColumns } = e.props
+    const bodyRows = e.props.scroll.bodyRows
+    const isBeside = bodyColumns >= SIDE_BY_SIDE
+    // Every row is counted: an inline pane may get far fewer than it asked for, and what does not
+    // fit is cut off. The header (with the filters) takes 2, the footer 2 where there is room.
+    const hasFooter = bodyRows >= 14
+    const room = Math.max(3, bodyRows - 2 - (hasFooter ? 2 : 0))
+    // Beside the picture: the details (3 rows and a gap), the list, and a "+N more" line if needed.
+    const listFits = (rows: number) => (list.length <= rows ? list.length : Math.max(1, rows - 1))
+    const listRows = isBeside ? listFits(room - 4) : listFits(Math.min(3, Math.max(1, room - 7)))
+    const box = fitPicture(
+      current?.width ?? null,
+      current?.height ?? null,
+      isBeside ? Math.min(PREVIEW_COLUMNS, Math.floor(bodyColumns * 0.45)) : Math.min(bodyColumns - 2, PREVIEW_COLUMNS),
+      isBeside ? room : room - 4 - listRows - (list.length > listRows ? 1 : 0),
+    )
+    const hasPicture = current?.thumb != null && e.surface === 'terminal' && box.rows >= 3
     const tabs = (['all', 'you', 'claude'] as const).map(f => ({ f, label: f === 'all' ? 'All' : f === 'you' ? 'You' : 'Claude', hotkey: f[0] }))
     const { Box, Text, Button } = $.ui.resolve(e)
     const preview =
-      current?.thumb != null && e.surface === 'terminal'
+      hasPicture && current?.thumb != null && e.surface === 'terminal'
         ? (() => {
             const { Image } = $.ui.resolve(e)
             return (
-              <Image
-                key="preview"
-                source={{ file: current.thumb, format: 'png', generation: current.at }}
-                columns={columns}
-                rows={rowsFor(current.width, current.height, columns, 20)}
-                alt="This terminal shows no pictures; o opens it"
-              />
+              <Box flexShrink={0} marginRight={isBeside ? 2 : 0}>
+                <Image
+                  key="preview"
+                  source={{ file: current.thumb, format: 'png', generation: current.at }}
+                  columns={box.columns}
+                  rows={box.rows}
+                  alt="This terminal shows no pictures; o opens it"
+                />
+              </Box>
             )
           })()
         : null
+    const details = current !== undefined && (
+      <Box flexDirection="column" marginBottom={1}>
+        <Text bold wrap="truncate-end">
+          {ICON[current.source]} {current.label}
+          {sizeText(current)}
+        </Text>
+        <Text dimColor wrap="truncate-end">
+          {SOURCE_WORD[current.source]} at {clockTime(current.at)} · {current.path}
+        </Text>
+        <Box flexDirection="row" flexWrap="wrap" columnGap={2}>
+          <Button key="act-open" hotkey="o" plain label="Open" autoFocus onPress={() => void openFile($, current.path)} />
+          <Button key="act-insert" hotkey="i" plain label="Insert @path" onPress={() => void insertPath($, current.path)} />
+          <Button key="act-copy" hotkey="p" plain label="Copy path" onPress={press => void copyPath($, current.path, press.surface)} />
+          <Button key="act-folder" hotkey="f" plain label="Show in folder" onPress={() => void showInFolder($, current.path)} />
+        </Box>
+      </Box>
+    )
+    const picks = list.slice(0, listRows).map(shot => (
+      <Button
+        key={`pick-${shot.id}`}
+        plain
+        dimColor={shot.id !== current?.id}
+        label={`${shot.id === current?.id ? '›' : ' '} ${clockTime(shot.at)}  ${ICON[shot.source]} ${shot.label}${sizeText(shot)}`}
+        onPress={() => void $.state.set(PICKED, shot.id)}
+      />
+    ))
+    const more = list.length > picks.length ? <Text dimColor>  +{list.length - picks.length} more</Text> : null
     return (
       <Box flexDirection="column">
-        <Box flexDirection="row" marginBottom={1}>
-          <Text bold>📸 Show & Tell</Text>
-          <Text dimColor>
-            {' '}
-            · {all.length} image{all.length === 1 ? '' : 's'} this session
-          </Text>
-        </Box>
-        <Box flexDirection="row" columnGap={2} marginBottom={1}>
-          {tabs.map(t => (
-            <Button key={`tab-${t.f}`} hotkey={t.hotkey} plain dimColor={t.f !== which} label={t.label} onPress={() => void $.state.set(FILTER, t.f)} />
-          ))}
+        <Box flexDirection="row" flexWrap="wrap" columnGap={3} marginBottom={1}>
+          <Box flexDirection="row">
+            <Text bold>📸 Show & Tell</Text>
+            <Text dimColor>
+              {' '}
+              · {all.length} image{all.length === 1 ? '' : 's'} this session
+            </Text>
+          </Box>
+          <Box flexDirection="row" columnGap={2}>
+            {tabs.map(t => (
+              <Button key={`tab-${t.f}`} hotkey={t.hotkey} plain dimColor={t.f !== which} label={t.label} onPress={() => void $.state.set(FILTER, t.f)} />
+            ))}
+          </Box>
         </Box>
         {current === undefined && <Text dimColor>Nothing yet. Paste an image with ctrl+v, or let Claude read or make one.</Text>}
-        {current !== undefined && (
-          <Box flexDirection="column" marginBottom={1}>
+        {current !== undefined && isBeside && (
+          <Box flexDirection="row">
             {preview}
-            <Text bold wrap="truncate-end">
-              {ICON[current.source]} {current.label}
-              {sizeText(current)}
-            </Text>
-            <Text dimColor wrap="truncate-end">
-              {SOURCE_WORD[current.source]} at {clockTime(current.at)} · {current.path}
-            </Text>
-            <Box flexDirection="row" columnGap={2}>
-              <Button key="act-open" hotkey="o" plain label="Open" autoFocus onPress={() => void openFile($, current.path)} />
-              <Button key="act-insert" hotkey="i" plain label="Insert @path" onPress={() => void insertPath($, current.path)} />
-              <Button key="act-copy" hotkey="p" plain label="Copy path" onPress={press => void copyPath($, current.path, press.surface)} />
-              <Button key="act-folder" hotkey="f" plain label="Show in folder" onPress={() => void showInFolder($, current.path)} />
+            <Box flexDirection="column" flexGrow={1} flexShrink={1}>
+              {details}
+              {picks}
+              {more}
             </Box>
           </Box>
         )}
-        {list.slice(0, 30).map(shot => (
-          <Button
-            key={`pick-${shot.id}`}
-            plain
-            dimColor={shot.id !== current?.id}
-            label={`${shot.id === current?.id ? '›' : ' '} ${clockTime(shot.at)}  ${ICON[shot.source]} ${shot.label}${sizeText(shot)}`}
-            onPress={() => void $.state.set(PICKED, shot.id)}
-          />
-        ))}
-        <Box marginTop={1}>
-          <Text dimColor>Kept {KEEP_DAYS} days · tab walks the list · esc closes</Text>
-        </Box>
+        {current !== undefined && !isBeside && (
+          <Box flexDirection="column">
+            {preview}
+            {details}
+            {picks}
+            {more}
+          </Box>
+        )}
+        {hasFooter && (
+          <Box marginTop={1}>
+            <Text dimColor>Kept {KEEP_DAYS} days · tab walks the list · esc closes</Text>
+          </Box>
+        )}
       </Box>
     )
   })

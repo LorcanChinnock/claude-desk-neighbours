@@ -2,6 +2,8 @@
 
 Shows you the pictures: a thumbnail the moment you paste a screenshot, and a gallery of every image in the session.
 
+![A pasted screenshot of a broken checkout shows as a thumbnail before sending; Claude fixes it and snapshots the page, and /gallery shows both](../../docs/screenshots/show-and-tell.gif)
+
 ```
 /plugin install show-and-tell@lorcan-plugins
 ```
@@ -24,7 +26,12 @@ Shows you the pictures: a thumbnail the moment you paste a screenshot, and a gal
 Click `📸 4` in the status row, or run `/gallery`: every image this session, newest first, with a large preview
 of the one you pick. `a`, `y` and `c` show all of them, yours or Claude's. `o` opens the image in your viewer, `i`
 puts `@path` in your prompt so Claude can look at it again, `p` copies the path and `f` shows it in its folder.
-Tab walks the list.
+Tab walks the list. After Claude fixed the checkout and snapshotted it:
+
+![The gallery: the snapshot Claude made previewed beside its actions, with the pasted screenshot below it in the list](../../docs/screenshots/show-and-tell-pane.png)
+
+The gallery asks for room to show a picture. Where it gets less (an inline pane in a small terminal), the picture
+shrinks to fit and the footer goes, so the header, actions and list stay in view.
 
 ## Which terminals show pictures
 

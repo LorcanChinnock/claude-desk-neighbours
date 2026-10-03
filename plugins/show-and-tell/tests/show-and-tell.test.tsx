@@ -2,7 +2,7 @@ import { expect, mock, test } from 'claude-code/testing'
 import type { On } from 'claude-code'
 import type { Engine } from 'claude-code/testing'
 
-import { imageNumbers, imagesIn, kindOf, pngSize, rowsFor, toolLabel } from '../hooks/register'
+import { fitPicture, imageNumbers, imagesIn, kindOf, pngSize, rowsFor, toolLabel } from '../hooks/register'
 
 // The first bytes of a real 200×120 PNG, padded out; only the header is read.
 const PNG = 'iVBORw0KGgoAAAANSUhEUgAAAMgAAAB4CAYAAAC3kr3rAAB/8ElEQVR4nBTT+U8I'
@@ -57,11 +57,14 @@ function world(on: On): World {
     if (text === undefined) throw new Error(`ENOENT ${e.path}`)
     return { value: text }
   })
-  on('fs.list', ($, e) => ({
-    value: [...w.files.entries()]
-      .filter(([p]) => p.startsWith(`${e.path}/`) && !p.slice(e.path.length + 1).includes('/'))
-      .map(([p, f]) => ({ name: p.slice(e.path.length + 1), kind: 'file' as const, size: f.base64.length, mtimeMs: f.mtimeMs, isLink: false })),
-  }))
+  on('fs.list', ($, e) => {
+    const inside = [...w.files.entries()].filter(([p]) => p.startsWith(`${e.path}/`))
+    const files = inside
+      .filter(([p]) => !p.slice(e.path.length + 1).includes('/'))
+      .map(([p, f]) => ({ name: p.slice(e.path.length + 1), kind: 'file' as const, size: f.base64.length, mtimeMs: f.mtimeMs, isLink: false }))
+    const dirs = [...new Set(inside.map(([p]) => p.slice(e.path.length + 1)).filter(rest => rest.includes('/')).map(rest => rest.split('/')[0] ?? ''))]
+    return { value: [...files, ...dirs.map(name => ({ name, kind: 'dir' as const, size: 0, mtimeMs: 0, isLink: false }))] }
+  })
   on('process.run', ($, e) => {
     const argv = [...e.argv]
     w.ran.push(argv)
@@ -118,6 +121,9 @@ test('reads what a draft, a stored row and a picture header say', () => {
   // 200×120 at 16 columns: 16 × 120 / 200 / 2 ≈ 5 rows, capped by the room there is.
   expect(rowsFor(200, 120, 16, 8)).toBe(5)
   expect(rowsFor(100, 1000, 16, 8)).toBe(8)
+  // Too tall for the room: narrower, same shape (1000×880 in 9 rows is 20 columns wide).
+  expect(fitPicture(1000, 880, 40, 9)).toEqual({ columns: 20, rows: 9 })
+  expect(fitPicture(200, 120, 40, 20)).toEqual({ columns: 40, rows: 12 })
   expect(toolLabel('mcp__claude-in-chrome__computer')).toBe('claude-in-chrome computer')
   const row = [
     { type: 'text', text: 'hi' },
@@ -235,7 +241,7 @@ test('its hint item joins the shared row in key order, and a click opens the gal
     )
   })
   on('ui.open', ($, e) => {
-    opened.push(e.id)
+    opened.push(`${e.id}:${e.rows}`)
     return { value: { isPlaced: true as const } }
   })
   world(on)
@@ -245,7 +251,8 @@ test('its hint item joins the shared row in key order, and a click opens the gal
     await hint.press({ key: 'desk-6-show-and-tell' })
     await hint.unmount()
   }
-  expect(opened).toEqual(['show-and-tell', 'show-and-tell'])
+  // Inline, a pane gets a third of the height unless it asks; a picture needs more.
+  expect(opened).toEqual(['show-and-tell:24', 'show-and-tell:24'])
 })
 
 test('kept images older than a week are pruned when a session starts', async ($, on) => {
@@ -277,3 +284,40 @@ for (const source of ['clear', 'resume'] as const) {
     expect(await labels()).toEqual([expect.stringMatching(/📎 kept · 200×120$/)])
   })
 }
+
+test('a picture Claude makes and then reads stays one Claude made, listed once', async ($, on) => {
+  const w = world(on)
+  on('tool.call', { tool: 'Bash' }, () => {
+    w.files.set(`${CWD}/snapshots/checkout.png`, { base64: PNG, mtimeMs: w.clock.now() })
+    return { result: { stdout: '', stderr: '', interrupted: false }, text: '' }
+  })
+  on('tool.call', { tool: 'Read' }, () => ({ result: { type: 'image' as const, file: { base64: PNG, type: 'image/png' as const, originalSize: 1 } } }))
+  await start($)
+  await $.tool.call({ tool: 'Bash', command: 'npm run snapshot' })
+  await w.clock.settle()
+  await $.tool.call({ tool: 'Read', file_path: `${CWD}/snapshots/checkout.png` })
+  await w.clock.settle()
+  const pane = await $.ui.mount({ plugin: 'show-and-tell', surface: 'terminal', component: 'Pane', requestId: 'show-and-tell', props: PANE_PROPS })
+  const rows = (await pane.findAll({ type: 'Button' })).map(b => b.text).filter(t => t.includes('checkout.png'))
+  expect(rows).toEqual([expect.stringMatching(/🎨 checkout\.png/)])
+})
+
+test('a short inline gallery keeps its header in view: the picture shrinks to fit', async ($, on) => {
+  const w = world(on)
+  w.files.set(`${CACHE}/1.png`, { base64: PNG, mtimeMs: 1_000 })
+  await start($)
+  w.box.text = '[Image #1]'
+  await w.clock.advance(250)
+  // What a 100×34 terminal gives an inline pane, and a narrow one.
+  for (const [bodyColumns, bodyRows] of [[96, 9], [60, 20]] as const) {
+    const props = { ...PANE_PROPS, bodyColumns, scroll: { offset: 0, bodyRows } }
+    const pane = await $.ui.mount({ plugin: 'show-and-tell', surface: 'terminal', component: 'Pane', requestId: 'show-and-tell', props })
+    const preview = await pane.find({ key: 'preview' })
+    // Beside: the header takes 2 rows, and a 9-row pane has no footer. Stacked: header, footer,
+    // the details and the one list row take 9.
+    expect(preview?.props.rows).toBe(bodyColumns >= 70 ? bodyRows - 2 : bodyRows - 9)
+    expect(await pane.find({ type: 'Text', text: '📸 Show & Tell' })).toBeDefined()
+    expect(await pane.find({ type: 'Button', text: /› \d\d:\d\d  📎 Pasted image #1/ })).toBeDefined()
+    await pane.unmount()
+  }
+})

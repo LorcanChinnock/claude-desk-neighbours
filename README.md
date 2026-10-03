@@ -1,5 +1,5 @@
 <p align="center">
-  <img src="docs/logo.png" width="760" alt="Desk Neighbours: five small colleagues for your Claude Code terminal. Grudge remembers, Your Serve nudges you, Receipts checks claims, Shrink Ray trims noise, Previously On catches you up.">
+  <img src="docs/logo.png" width="760" alt="Desk Neighbours: six small colleagues for your Claude Code terminal. Grudge remembers, Your Serve nudges you, Receipts checks claims, Shrink Ray trims noise, Previously On catches you up, Show & Tell shows you.">
 </p>
 
 <p align="center">
@@ -125,6 +125,8 @@ Then install any of them, or all six. Each works on its own, and they fit togeth
 ## 📸 Show & Tell
 
 **Shows you the pictures: a thumbnail the moment you paste a screenshot, and a gallery of every image in the session.**
+
+![A pasted screenshot of a broken checkout shows as a thumbnail before sending; Claude fixes it and snapshots the page, and /gallery shows both](docs/screenshots/show-and-tell.gif)
 
 - **A thumbnail on paste.** Press `ctrl+v` with a screenshot on the clipboard and it appears above the prompt
   straight away, before you send. It goes when you send, or after 20 seconds.
