@@ -23,7 +23,8 @@ a turn when there's something for Claude to do, and it waits until Claude is idl
 - **An agent reviewer comments.** Each comment goes to a separate triage agent before anything changes (see below).
   Claude only gets the comments that were accepted, along with the evidence for each one.
 - **It's green.** You get a toast and a line above the prompt, such as
-  `🔔 #42 green · 5 checks · 2 reviews · 1 declined with reason`. Closing Time never merges anything.
+  `🔔 #42 green · 5 checks · 2 reviews · 1 declined with reason`. It keeps watching for 10 more minutes in case
+  a bot's review turns up late, and a late comment reopens the loop. Closing Time never merges anything.
 
 "Green" means every required check on the latest commit passed (or every check, if the repo has none marked
 required), each agent reviewer has reviewed the latest commit, and every bot comment is either resolved, fixed in
@@ -53,7 +54,8 @@ Review comments from people aren't triaged. They show up in the pane for you to 
 ## Replies
 
 Declined comments, and fixed ones, get a reply drafted: `Not changing this: <reason> (<evidence>)` or
-`Fixed in abc1234.` By default, nothing is posted until you press **Post** in the band or the pane. Posting
+`Fixed in abc1234.` Evidence goes in the reply only when it's short. File paths are always written relative to
+the repo, so a reply never posts a path from your machine. By default, nothing is posted until you press **Post** in the band or the pane. Posting
 resolves the threads that were fixed, and leaves declined ones open so a person can judge them. **Discard** drops
 the drafts.
 
