@@ -1,7 +1,7 @@
 import { expect, mock, test } from 'claude-code/testing'
 import type { On } from 'claude-code'
 
-import { crumbsIn } from '../hooks/register'
+import { checkIn, crumbsIn } from '../hooks/register'
 
 const USAGE = { input_tokens: 1, output_tokens: 1, cache_read_input_tokens: 0, cache_creation_input_tokens: 0 }
 const ROOT = '/work/payments-service'
@@ -72,6 +72,30 @@ test('crumbs are found in added lines only, and a moved TODO is not new', async 
   expect(crumbsIn('app.py', [{ newStart: 1, lines: ['+print(x)'] }])).toHaveLength(1)
 })
 
+test('only a real check step is learned, as it would be run again', () => {
+  // Plain checks, and what they were piped into or redirected to dropped.
+  expect(checkIn('pnpm test')).toBe('pnpm test')
+  expect(checkIn('pnpm test 2>&1 | tail -25')).toBe('pnpm test')
+  expect(checkIn('pnpm test > out.txt')).toBe('pnpm test')
+  expect(checkIn('CI=1 pnpm test -- --test-reporter=dot')).toBe('CI=1 pnpm test -- --test-reporter=dot')
+  // The check step out of a chain, with a cd straight before it kept.
+  expect(checkIn('git rm -q src/cache.js && grep -rn cache src test; pnpm test')).toBe('pnpm test')
+  expect(checkIn('cd web && pnpm test')).toBe('cd web && pnpm test')
+
+  // A heredoc that writes a test file is not a check, whatever its body says; one that then runs it is.
+  const writes = "cat >> tests/shrink-ray.test.tsx <<'EOF'\nawait run('pnpm test')\nEOF"
+  expect(checkIn(writes)).toBe(null)
+  expect(checkIn(`${writes}\npnpm test`)).toBe('pnpm test')
+
+  // Check words that are not run as a check.
+  expect(checkIn('echo pnpm test')).toBe(null)
+  expect(checkIn('grep -rn "npm test" .')).toBe(null)
+  expect(checkIn('cat plugins/receipts/tests/receipts.test.tsx')).toBe(null)
+
+  // Too long to run again whole is skipped, never cut.
+  expect(checkIn(`pnpm test ${'--flag '.repeat(40)}`)).toBe(null)
+})
+
 test('a claim with nothing run since the edit gets a footer and a band', async ($, on) => {
   const w = world(on)
   await $.turn.start({ text: 'fix auth', turnId: 't1' })
@@ -102,6 +126,26 @@ test('a verified turn says nothing, and the command is learned', async ($, on) =
   expect(text).toBe('Fixed, tests pass.')
   expect(w.asked).toBe(0)
 
+  await w.clock.settle()
+  expect(w.store.get(`verify:${ROOT}`)).toBe('pnpm test')
+})
+
+test('writing a test file with a heredoc is no receipt, and is never learned', async ($, on) => {
+  const w = world(on)
+  await $.turn.start({ text: 'add a test', turnId: 't1' })
+  await $.tool.call(edit('src/auth.ts', 'const ok = true'))
+  await $.tool.call({ tool: 'Bash', command: "cat >> tests/auth.test.ts <<'EOF'\ntest('ok', () => run('pnpm test'))\nEOF" })
+  const { text } = await $.turn.complete(finish('Done, tests pass.'))
+  expect(text).toBe('🧾 No receipt: nothing ran since edit to src/auth.ts')
+
+  await w.clock.settle()
+  expect(w.store.get(`verify:${ROOT}`)).toBe(undefined)
+})
+
+test('a check in a chain is learned on its own, not the chain', async ($, on) => {
+  const w = world(on)
+  await $.turn.start({ text: 'x', turnId: 't1' })
+  await $.tool.call({ tool: 'Bash', command: 'git rm -q src/cache.js && pnpm test 2>&1 | tail -25' })
   await w.clock.settle()
   expect(w.store.get(`verify:${ROOT}`)).toBe('pnpm test')
 })
@@ -197,20 +241,22 @@ test('its hint item joins the shared row in key order, and a click opens its pan
   }
 })
 
-test('after /clear the learned check command loads again', async ($, on) => {
-  const w = world(on)
-  w.store.set(`verify:${ROOT}`, 'pnpm test')
-  on('classic.SessionStart', () => ({}))
-  const checks = async () => {
-    const pane = await $.ui.mount({ plugin: 'receipts', surface: 'terminal', component: 'Pane', requestId: 'receipts', props: { title: 'x', isFocused: true, bodyColumns: 90, placement: 'dock', scroll: { offset: 0, bodyRows: 20 }, view: {} } })
-    const text = (await pane.findAll({ type: 'Text' })).map(t => t.text).join(' | ')
-    await pane.unmount()
-    return text
-  }
+for (const source of ['clear', 'resume'] as const) {
+  test(`after /${source} the learned check command loads again`, async ($, on) => {
+    const w = world(on)
+    w.store.set(`verify:${ROOT}`, 'pnpm test')
+    on('classic.SessionStart', () => ({}))
+    const checks = async () => {
+      const pane = await $.ui.mount({ plugin: 'receipts', surface: 'terminal', component: 'Pane', requestId: 'receipts', props: { title: 'x', isFocused: true, bodyColumns: 90, placement: 'dock', scroll: { offset: 0, bodyRows: 20 }, view: {} } })
+      const text = (await pane.findAll({ type: 'Text' })).map(t => t.text).join(' | ')
+      await pane.unmount()
+      return text
+    }
 
-  // A cleared session's state starts empty, and no session.start fires to fill it.
-  expect(await checks()).toContain('not learned yet')
-  await $.classic.SessionStart({ source: 'clear' })
-  await w.clock.settle()
-  expect(await checks()).toContain('pnpm test')
-})
+    // A cleared or resumed session's state starts empty, and no session.start fires to fill it.
+    expect(await checks()).toContain('not learned yet')
+    await $.classic.SessionStart({ source })
+    await w.clock.settle()
+    expect(await checks()).toContain('pnpm test')
+  })
+}

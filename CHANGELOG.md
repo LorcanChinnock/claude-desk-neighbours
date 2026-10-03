@@ -1,5 +1,16 @@
 # Changelog
 
+## Unreleased
+
+Desk Neighbours:
+
+- After `/resume`, the mods load their saved data again, as 0.2.0 made them do after `/clear`. Resuming another
+  conversation also starts a session with empty state and runs no `session.start`.
+- Receipts only counts and learns a real check step. It used to match a check word anywhere in a command and keep
+  the whole command, cut at 200 characters, so writing a test file with a heredoc was learned as the repo's check
+  and "Run them" offered to run it again. Now `git rm x && pnpm test 2>&1 | tail -25` is learned as `pnpm test`, a
+  heredoc's body never counts, and a check too long to keep whole is skipped rather than cut.
+
 ## 0.2.0
 
 Desk Neighbours:

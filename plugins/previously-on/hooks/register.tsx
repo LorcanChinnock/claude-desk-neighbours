@@ -283,10 +283,10 @@ export const register: Register = (on, options) => {
     return next(e)
   })
 
-  // `/clear` starts a new session with empty state and fires no `session.start`; its classic
-  // SessionStart (source `clear`) is the one place to load the day log again.
+  // `/clear` and `/resume` go on under a new session with empty state and fire no `session.start`;
+  // their classic SessionStart (source `clear` or `resume`) is the one place to load the day log again.
   on('classic.SessionStart', ($, e, next) => {
-    if (e.source === 'clear') void refreshJournal($).catch(() => undefined)
+    if (e.source === 'clear' || e.source === 'resume') void refreshJournal($).catch(() => undefined)
     return next(e)
   })
 

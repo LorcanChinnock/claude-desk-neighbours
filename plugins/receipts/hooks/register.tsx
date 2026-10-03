@@ -144,14 +144,38 @@ async function recordEdit($: EngineInterface, file: string, hunks: readonly Hunk
   }))
 }
 
+const STARTS_AS_CHECK = new RegExp(`^(?:${VERIFY.source})`, 'i')
+const ENV_PREFIX = /^(?:\w+=\S*\s+)*/
+const HEREDOC = /<<-?\s*(['"]?)(\w+)\1[^\n]*\n[\s\S]*?\n\s*\2[ \t]*(?=\n|$)/g
+const REDIRECT = /\s+(?:\d*>>?&?\s*\S+|\d*<\s*\S+)/g
+const MAX_CHECK = 200
+
+/**
+ * The check a shell command runs, as it would be run again: the first step that starts with a test, typecheck,
+ * lint or build, without what it was piped into or redirected to, after a `cd` straight before it. Null when no
+ * step is a check, so a check word inside a heredoc, a string or a filename never counts.
+ */
+export function checkIn(command: string): string | null {
+  const steps = command.replace(HEREDOC, '').split(/\s*(?:&&|\|\||;|\n)\s*/)
+  for (const [at, step] of steps.entries()) {
+    const head = (step.split('|')[0] ?? '').replace(REDIRECT, '').trim()
+    if (!STARTS_AS_CHECK.test(head.replace(ENV_PREFIX, ''))) continue
+    const before = steps[at - 1]?.trim() ?? ''
+    const check = /^cd\s+\S+$/.test(before) ? `${before} && ${head}` : head
+    return check.length <= MAX_CHECK ? check : null
+  }
+  return null
+}
+
 async function recordCommand($: EngineInterface, command: string, exitCode: number): Promise<void> {
-  if (!VERIFY.test(command)) return
+  const check = checkIn(command)
+  if (check === null) return
   await update($, ledger, l => ({ ...l, seq: l.seq + 1, lastVerifySeq: l.seq + 1, uncheckedFiles: [] }))
-  if (exitCode === 0) void learn($, command).catch(() => undefined)
+  if (exitCode === 0) void learn($, check).catch(() => undefined)
 }
 
 async function learn($: EngineInterface, ran: string): Promise<void> {
-  const learned = ran.trim().slice(0, 200)
+  const learned = ran.trim()
   await $.store.set(`verify:${await repoHere($)}`, learned)
   await $.state.set(COMMAND, learned)
 }
@@ -333,10 +357,10 @@ export const register: Register = on => {
     return next(e)
   })
 
-  // `/clear` starts a new session with empty state and fires no `session.start`; its classic
-  // SessionStart (source `clear`) is the one place to load the learned check command again.
+  // `/clear` and `/resume` go on under a new session with empty state and fire no `session.start`;
+  // their classic SessionStart (source `clear` or `resume`) is the one place to load the learned check command again.
   on('classic.SessionStart', ($, e, next) => {
-    if (e.source === 'clear') void loadCommand($).catch(() => undefined)
+    if (e.source === 'clear' || e.source === 'resume') void loadCommand($).catch(() => undefined)
     return next(e)
   })
 
