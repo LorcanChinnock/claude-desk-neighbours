@@ -14,5 +14,8 @@
       "description": "How long new thumbnails stay above the prompt. A paste's thumbnail also goes when you send it.",
       "default": 20
     }
-  }
+  },
+  "homepage": "https://github.com/LorcanChinnock/claude-desk-neighbours/tree/main/plugins/show-and-tell",
+  "repository": "https://github.com/LorcanChinnock/claude-desk-neighbours",
+  "license": "MIT"
 }

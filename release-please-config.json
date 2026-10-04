@@ -5,6 +5,7 @@
   "packages": {
     ".": {
       "release-type": "simple",
+      "release-as": "1.0.0",
       "bump-minor-pre-major": true,
       "extra-files": [
         { "type": "json", "path": "plugins/closing-time/.claude-plugin/plugin.json", "jsonpath": "$.version" },

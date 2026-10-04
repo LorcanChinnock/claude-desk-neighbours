@@ -6,5 +6,8 @@
     "name": "Lorcan Chinnock",
     "url": "https://github.com/LorcanChinnock"
   },
-  "types": "./types/index.d.ts"
+  "types": "./types/index.d.ts",
+  "homepage": "https://github.com/LorcanChinnock/claude-desk-neighbours/tree/main/plugins/receipts",
+  "repository": "https://github.com/LorcanChinnock/claude-desk-neighbours",
+  "license": "MIT"
 }

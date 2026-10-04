@@ -14,5 +14,8 @@
       "description": "Show a recap when your first keystroke comes after this long away.",
       "default": 20
     }
-  }
+  },
+  "homepage": "https://github.com/LorcanChinnock/claude-desk-neighbours/tree/main/plugins/previously-on",
+  "repository": "https://github.com/LorcanChinnock/claude-desk-neighbours",
+  "license": "MIT"
 }

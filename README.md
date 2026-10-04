@@ -176,7 +176,7 @@ order. Click an item, or run its command, to open its pane. Open a few and they 
 When a neighbour has something to tell you, it gets a line in the band above the prompt. Your Serve always goes
 on top, and long lines wrap instead of getting cut off:
 
-![Claude Code with all five neighbours: a Your Serve question and a Previously On recap in the band, the status row below](docs/screenshots/previously-recap.png)
+![Claude Code with five of the neighbours: a Your Serve question and a Previously On recap in the band, the status row below](docs/screenshots/previously-recap.png)
 
 Buttons never send anything. They put text in your prompt so you can read it, change it and send it yourself.
 To press one, type its digit into an empty prompt or click it. If there's already text in the prompt, press
