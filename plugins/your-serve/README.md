@@ -2,7 +2,7 @@
 
 Lets you know when Claude is waiting on you, so you don't miss the question at the bottom of a long answer.
 
-![Claude ends a long answer with a question; Your Serve puts it above the prompt with its answers, and 1 fills in the reply](../../docs/screenshots/your-serve.gif)
+![Claude ends a long answer with a question; Your Serve puts it above the prompt with its answers, and 1 sends the reply straight to Claude](../../docs/screenshots/your-serve.gif)
 
 ```
 /plugin install your-serve@claude-desk-neighbours
@@ -17,8 +17,9 @@ of the band:
 🎾 Your serve: Keep the old cache or drop it?          1: Keep  2: Drop  3: Something else
 ```
 
-Press an answer and a natural-sounding reply ("Drop the old cache.") lands in your prompt, ready to send. You
-can type its digit into an empty prompt or click it. If there aren't any clear options, you just get the
+Press an answer and a natural-sounding reply ("Drop the old cache.") goes straight to Claude. You can type its
+digit into an empty prompt or click it. If you've already started typing, the reply goes on the end of your draft
+instead, for you to finish and send. If there aren't any clear options, you just get the
 question. Either way it stays put until you send a prompt. Answers that don't ask anything produce nothing, and
 subagent turns are ignored.
 
@@ -28,7 +29,7 @@ If Claude asks several things at once, you get them one at a time, however many 
 🎾 Your serve (2/3): What should the new timeout be?          1: 30s  2: 60s  other  skip
 ```
 
-Each answer takes you to the next question. After the last one, they all go into your prompt as a single reply:
+Each answer takes you to the next question. After the last one, they all go to Claude as a single reply:
 
 ```
 1. Keep the old cache or drop it? Drop the old cache.
@@ -38,7 +39,8 @@ Each answer takes you to the next question. After the last one, they all go into
 
 If none of the answers fit, click `other` and type your own. Enter answers the question with what you typed and
 moves on, the same as pressing an answer. If you skip a question, or press Enter on an empty `other`, it's left
-unanswered so you can type your answer after it in the prompt before sending. You have to click `other` and
+unanswered, and the replies go into your prompt instead of being sent, so you can type that answer before
+sending. You have to click `other` and
 `skip` (or reach them with Tab) because the digits after 3 belong to the other Desk Neighbours. The mobile app
 can't show a text field, so there you only get `skip`.
 

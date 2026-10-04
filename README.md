@@ -65,12 +65,12 @@ than one:
 
 **Lets you know when Claude is waiting on you, so you don't miss the question at the bottom of a long answer.**
 
-![Claude ends a long answer with a question; Your Serve puts it above the prompt with its answers, and 1 fills in the reply](docs/screenshots/your-serve.gif)
+![Claude ends a long answer with a question; Your Serve puts it above the prompt with its answers, and 1 sends the reply straight to Claude](docs/screenshots/your-serve.gif)
 
 - When a turn ends by asking you something, Haiku pulls out what you need to answer and up to three possible
   answers. Each answer is labelled with the choice itself ("Add 30s cap"), not "Option 2".
-- Pressing `1`, `2` or `3` drops a natural-sounding reply into your prompt for you to edit or send. Nothing
-  reaches Claude until you send it.
+- Pressing `1`, `2` or `3` sends Claude a natural-sounding reply, so there's no Enter to press after. If you've
+  already started typing, the reply goes on the end of your draft instead, for you to finish and send.
 - If the turn took more than a minute you also get a toast, and on macOS it can say "Claude needs a decision" out
   loud.
 - It ignores plain statements and subagent turns, so it only speaks up when it's actually your move.
@@ -81,15 +81,14 @@ than one:
 
 **Catches "fixed" when nothing has run since the last edit, along with any debug lines left behind.**
 
-![Claude adds a console.log and says it didn't run anything; Receipts flags the crumb, and 7 fills in a prompt to sweep it](docs/screenshots/receipts.gif)
+![Claude adds a console.log and says it didn't run anything; Receipts flags the crumb, and 7 sends a prompt to sweep it, which Claude does](docs/screenshots/receipts.gif)
 
 - If a turn edits files and then says "done", "fixed" or "tests pass" when nothing that checks the work has run
-  since the last edit, Receipts points it out under the answer. Press `6` to fill in a prompt asking Claude to
-  run the check.
+  since the last edit, Receipts points it out under the answer. Press `6` to ask Claude to run the check.
 - It works out each repo's check command from the last test, typecheck, lint or build that passed, and remembers
   it between sessions.
 - It also looks for crumbs in the lines Claude added this turn: `console.log`, `debugger`, `.only(`, `fit(`,
-  `binding.pry`, `dbg!` and new `TODO`s. `7` fills in a prompt to clean them up.
+  `binding.pry`, `dbg!` and new `TODO`s. `7` asks Claude to clean them up.
 - The second time in a session that a receipt is missing, it offers to make "always run the tests before saying
   done" a rule. If you have Grudge installed, Grudge will offer to hold it.
 
@@ -178,8 +177,9 @@ on top, and long lines wrap instead of getting cut off:
 
 ![Claude Code with five of the neighbours: a Your Serve question and a Previously On recap in the band, the status row below](docs/screenshots/previously-recap.png)
 
-Buttons never send anything. They put text in your prompt so you can read it, change it and send it yourself.
-To press one, type its digit into an empty prompt or click it. If there's already text in the prompt, press
+Buttons that write a prompt for you (Your Serve's answers and Receipts' suggestions) send it straight away. If
+you've already started typing, the text goes on the end of your draft instead, so you can finish it and send it
+yourself. To press one, type its digit into an empty prompt or click it. If there's already text in the prompt, press
 `ctrl+x tab` first. Each neighbour has its own digits, so they never clash. Show & Tell's and Closing Time's band
 buttons don't have digits, so either click them or open their pane and use its letter keys:
 

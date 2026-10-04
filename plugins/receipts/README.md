@@ -2,7 +2,7 @@
 
 Catches "fixed" when nothing has run since the last edit, along with any debug lines left behind.
 
-![Claude adds a console.log and says it didn't run anything; Receipts flags the crumb, and 7 fills in a prompt to sweep it](../../docs/screenshots/receipts.gif)
+![Claude adds a console.log and says it didn't run anything; Receipts flags the crumb, and 7 sends a prompt to sweep it, which Claude does](../../docs/screenshots/receipts.gif)
 
 ```
 /plugin install receipts@claude-desk-neighbours
@@ -32,10 +32,11 @@ It also flags crumbs left in lines Claude added this turn: `console.log`, `debug
 In the demo at the top, Claude was told not to run anything and said so, which is why there's no "No receipt",
 just the crumb.
 
-The band suggests what to do next. Each button fills in your prompt, and nothing goes anywhere until you send it.
-Type the digit into an empty prompt or click the button:
+The band suggests what to do next. Each button sends Claude its prompt straight away; if you've already started
+typing, the prompt goes on the end of your draft instead, for you to finish and send. Type the digit into an
+empty prompt or click the button:
 
-| Key | Button | Fills |
+| Key | Button | Sends |
 |---|---|---|
 | `6` | Run them | Run `` `pnpm test` `` and show me the result. |
 | `7` | Sweep | Remove these leftovers: console.log in src/api.ts:41, … |
