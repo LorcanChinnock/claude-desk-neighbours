@@ -1,5 +1,18 @@
 # Changelog
 
+## [1.0.0](https://github.com/LorcanChinnock/claude-desk-neighbours/compare/v0.7.1...v1.0.0) (2026-10-04)
+
+
+### ⚠ BREAKING CHANGES
+
+* retire Receipts and Shrink Ray ([#27](https://github.com/LorcanChinnock/claude-desk-neighbours/issues/27))
+
+### Features
+
+* retire Receipts and Shrink Ray ([#27](https://github.com/LorcanChinnock/claude-desk-neighbours/issues/27)) ([a5a9ed2](https://github.com/LorcanChinnock/claude-desk-neighbours/commit/a5a9ed2636f785d562fa0300da249e024a911464))
+* send Your Serve's and Receipts' prompts when you answer ([#26](https://github.com/LorcanChinnock/claude-desk-neighbours/issues/26)) ([1e81577](https://github.com/LorcanChinnock/claude-desk-neighbours/commit/1e8157757743691281b76c6ca1c10eafa0a1efa2))
+* **your-serve:** type your own answer to a question with other ([#24](https://github.com/LorcanChinnock/claude-desk-neighbours/issues/24)) ([d3893bd](https://github.com/LorcanChinnock/claude-desk-neighbours/commit/d3893bd38b0c8dd70985a4af2cda7992a63a346b))
+
 ## [0.7.1](https://github.com/LorcanChinnock/claude-desk-neighbours/compare/v0.7.0...v0.7.1) (2026-10-03)
 
 
