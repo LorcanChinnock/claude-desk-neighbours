@@ -213,11 +213,13 @@ async function confirmsClaim($: EngineInterface, answer: string, signal: AbortSi
   return reply.isAnswered && /^\s*yes\b/i.test(reply.text)
 }
 
-/** Puts `text` in the prompt box: fills an empty one, appends to a draft. */
+/** Sends `text` as the person's prompt from an empty box; a draft is theirs to finish, so `text` appends to it. */
 async function propose($: EngineInterface, text: string): Promise<void> {
   const box = await $.prompt.read()
   if (box.text.trim() === '') {
-    await $.prompt.fill({ text, mode: 'replace' })
+    // This plugin's own `prompt.submit` hook never sees a prompt it sends, so the band clears here.
+    await clearBand($)
+    await $.prompt.submit({ text, asUser: true }).catch(() => $.prompt.fill({ text, mode: 'replace' }))
     return
   }
   const gap = /\s$/.test(box.text) ? '' : ' '

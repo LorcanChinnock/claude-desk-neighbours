@@ -22,14 +22,20 @@ const VERDICT = JSON.stringify({
   ],
 })
 
-function beneath(on: On, verdict: string, box: { text: string }): { asked: number; toasts: string[] } {
-  const seen = { asked: 0, toasts: [] as string[] }
+function beneath(on: On, verdict: string, box: { text: string }): { asked: number; toasts: string[]; sent: string[] } {
+  const seen = { asked: 0, toasts: [] as string[], sent: [] as string[] }
   on('ui.render', ($, e) => {
     const { Box } = $.ui.resolve(e)
     return <Box />
   })
   on('turn.complete', ($, e) => ({ text: e.answer }))
-  on('prompt.submit', ($, e) => ({ text: e.text }))
+  on('prompt.submit', ($, e) => {
+    if (e.origin.kind === 'plugin') {
+      expect(e.origin.asUser).toBe(true)
+      seen.sent.push(e.text)
+    }
+    return { text: e.text }
+  })
   on('model.complete', () => {
     seen.asked += 1
     return { value: { isAnswered: true as const, text: verdict, usage: USAGE } }
@@ -82,7 +88,7 @@ test('every question is kept in order, however many, and empty ones dropped', ()
   expect(toServe({ needsInput: false, questions })).toBeNull()
 })
 
-test('a question becomes the top band line, and an option fills the prompt', async ($, on) => {
+test('a question becomes the top band line, and an option sends the reply', async ($, on) => {
   const clock = mock.clock(on)
   const box = { text: '' }
   const seen = beneath(on, VERDICT, box)
@@ -99,19 +105,62 @@ test('a question becomes the top band line, and an option fills the prompt', asy
 
   const ui = await $.ui.mount({ plugin: 'your-serve', surface: 'terminal', ...BAND })
   expect((await ui.findAll({ type: 'Button' })).map(b => b.props.hotkey)).toEqual(['1', '2'])
-  await ui.press({ key: 'serve-2' })
-  expect(box.text).toBe('Drop the old cache.')
+  // A draft is the person's to finish, so the reply joins it and nothing is sent.
   box.text = 'Also,'
   await ui.press({ key: 'serve-1' })
   expect(box.text).toBe('Also, Keep the old cache.')
-  expect(seen.toasts).toEqual([])
+  expect(seen.sent).toEqual([])
+  expect(await ui.find({ type: 'Text', text: /Your serve/ })).toBeDefined()
 
-  await $.prompt.submit({ text: 'Drop it', wait: false, origin: { kind: 'composer' } })
+  box.text = ''
+  await ui.press({ key: 'serve-2' })
   await clock.settle()
+  expect(seen.sent).toEqual(['Drop the old cache.'])
+  expect(box.text).toBe('')
+  expect(await ui.find({ type: 'Text', text: /Your serve/ })).toBeUndefined()
+  expect(seen.toasts).toEqual([])
+})
+
+test('several questions all answered are sent as one reply, from the band or the pane', async ($, on) => {
+  const clock = mock.clock(on)
+  const box = { text: '' }
+  const verdict = JSON.stringify({
+    needsInput: true,
+    questions: [
+      { question: 'Keep the old cache or drop it?', options: [{ label: 'Keep', reply: 'Keep the old cache.' }, { label: 'Drop', reply: 'Drop the old cache.' }] },
+      { question: 'Add a retry?', options: [{ label: 'Yes', reply: 'Yes, add a retry.' }, { label: 'No', reply: 'No retry.' }] },
+    ],
+  })
+  const closed: string[] = []
+  on('ui.close', ($, e) => {
+    closed.push(e.id)
+    return { value: undefined }
+  })
+  const seen = beneath(on, verdict, box)
+  await $.turn.complete(turn('1. Should I keep the old cache?\n2. Add a retry?'))
+  await clock.settle()
+
+  const ui = await $.ui.mount({ plugin: 'your-serve', surface: 'terminal', ...BAND })
+  await ui.press({ key: 'serve-2' })
+  expect(seen.sent).toEqual([])
+  const pane = await $.ui.mount({
+    plugin: 'your-serve',
+    surface: 'terminal',
+    component: 'Pane',
+    requestId: 'your-serve',
+    props: { title: 'x', isFocused: true, bodyColumns: 90, placement: 'dock', scroll: { offset: 0, bodyRows: 20 }, view: {} },
+  })
+  await pane.press({ key: 'pane-serve-1' })
+  await pane.unmount()
+  await clock.settle()
+
+  expect(closed).toEqual(['your-serve'])
+  expect(seen.sent).toEqual(['1. Keep the old cache or drop it? Drop the old cache.\n2. Add a retry? Yes, add a retry.'])
+  expect(box.text).toBe('')
   expect(await ui.find({ type: 'Text', text: /Your serve/ })).toBeUndefined()
 })
 
-test('several questions are asked one at a time, then all answers fill the prompt as one reply', async ($, on) => {
+test('several questions are asked one at a time, and with one skipped the answers fill the prompt instead', async ($, on) => {
   const clock = mock.clock(on)
   const box = { text: '' }
   const verdict = JSON.stringify({
@@ -127,7 +176,7 @@ test('several questions are asked one at a time, then all answers fill the promp
     closed.push(e.id)
     return { value: undefined }
   })
-  beneath(on, verdict, box)
+  const seen = beneath(on, verdict, box)
   await $.turn.complete(turn('1. Should I keep the old cache?\n2. What timeout?\n3. Add a retry?'))
   await clock.settle()
 
@@ -158,6 +207,7 @@ test('several questions are asked one at a time, then all answers fill the promp
 
   await ui.press({ key: 'serve-1' })
   expect(box.text).toBe('1. Keep the old cache or drop it? Drop the old cache.\n2. What should the new timeout be?\n3. Add a retry? Yes, add a retry.')
+  expect(seen.sent).toEqual([])
   expect(await ui.find({ type: 'Text', text: '🎾 Your serve: all 3 answers are in your prompt' })).toBeDefined()
   expect(await ui.findAll({ type: 'Button' })).toHaveLength(0)
 

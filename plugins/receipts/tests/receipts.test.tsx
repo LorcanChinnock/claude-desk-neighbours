@@ -10,10 +10,10 @@ const BAND = {
   props: { hasSurvey: false, isWorking: false, maxRows: 10, bodyColumns: 160, scroll: { offset: 0, bodyRows: 10 }, view: {} },
 } as const
 
-type World = { clock: ReturnType<typeof mock.clock>; store: Map<string, unknown>; box: { text: string }; asked: number; footerBeneath: string | null }
+type World = { clock: ReturnType<typeof mock.clock>; store: Map<string, unknown>; box: { text: string }; sent: string[]; asked: number; footerBeneath: string | null }
 
 function world(on: On, claimVerdict = 'yes'): World {
-  const w: World = { clock: mock.clock(on), store: new Map(), box: { text: '' }, asked: 0, footerBeneath: null }
+  const w: World = { clock: mock.clock(on), store: new Map(), box: { text: '' }, sent: [], asked: 0, footerBeneath: null }
   on('session.repo', () => ({ value: { root: ROOT, remote: null, internal: false, name: null } }))
   on('session.root', () => ({ value: ROOT }))
   on('store.get', ($, e) => ({ value: w.store.get(e.key) }))
@@ -31,7 +31,13 @@ function world(on: On, claimVerdict = 'yes'): World {
   })
   on('turn.start', ($, e) => ({ turnId: e.turnId }))
   on('turn.complete', ($, e) => ({ text: w.footerBeneath ?? e.answer }))
-  on('prompt.submit', ($, e) => ({ text: e.text }))
+  on('prompt.submit', ($, e) => {
+    if (e.origin.kind === 'plugin') {
+      expect(e.origin.asUser).toBe(true)
+      w.sent.push(e.text)
+    }
+    return { text: e.text }
+  })
   on('prompt.read', () => ({ value: { text: w.box.text, cursor: w.box.text.length } }))
   on('prompt.fill', ($, e) => {
     w.box.text = e.mode === 'append' ? w.box.text + e.text : e.text
@@ -114,7 +120,10 @@ test('a claim with nothing run since the edit gets a footer and a band', async (
   expect((await ui.find({ key: 'receipts-run' }))?.props.hotkey).toBe('6')
   expect((await ui.find({ key: 'receipts-sweep' }))?.props.hotkey).toBe('7')
   await ui.press({ key: 'receipts-sweep' })
-  expect(w.box.text).toBe('Remove these leftovers: console.log in src/auth.ts:2.')
+  await w.clock.settle()
+  expect(w.sent).toEqual(['Remove these leftovers: console.log in src/auth.ts:2.'])
+  expect(w.box.text).toBe('')
+  expect(await ui.find({ key: 'receipts-sweep' })).toBeUndefined()
 })
 
 test('a verified turn says nothing, and the command is learned', async ($, on) => {
@@ -174,8 +183,11 @@ test('the second missing receipt offers to make it a rule', async ($, on) => {
   }
   const ui = await $.ui.mount({ plugin: 'receipts', surface: 'terminal', ...BAND })
   expect((await ui.find({ key: 'receipts-rule' }))?.props.hotkey).toBe('8')
+  // A draft is the person's to finish, so the text joins it and nothing is sent.
+  w.box.text = 'Also,'
   await ui.press({ key: 'receipts-rule' })
-  expect(w.box.text).toBe('From now on, always run `pnpm test` before saying something is done.')
+  expect(w.box.text).toBe('Also, From now on, always run `pnpm test` before saying something is done.')
+  expect(w.sent).toEqual([])
 
   await $.prompt.submit({ text: w.box.text, wait: false, origin: { kind: 'composer' } })
   await w.clock.settle()

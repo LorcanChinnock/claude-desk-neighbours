@@ -125,6 +125,21 @@ async function propose($: EngineInterface, text: string): Promise<void> {
   await $.prompt.fill({ text: `${gap}${text}`, mode: 'append' })
 }
 
+/**
+ * Sends `text` as the person's reply, so there's no enter to press after. It goes in the prompt box instead when
+ * that holds a draft, theirs to finish, or `isWhole` is false: a skipped question is left in it to type.
+ */
+async function send($: EngineInterface, text: string, isWhole: boolean): Promise<void> {
+  if (!isWhole || (await $.prompt.read()).text.trim() !== '') {
+    await propose($, text)
+    return
+  }
+  // This plugin's own `prompt.submit` hook never sees a prompt it sends, so the band clears here.
+  generation += 1
+  await clear($)
+  await $.prompt.submit({ text, asUser: true }).catch(() => propose($, text))
+}
+
 /** The question waiting on an answer, or null once every question has one. */
 export function currentStep(shown: Serve): { step: number; asked: ServeQuestion } | null {
   const step = shown.answers.length
@@ -138,23 +153,23 @@ export function formatAnswers(shown: Serve): string {
 }
 
 /**
- * An answer pressed or typed in the band or the pane. One question puts its reply straight in the prompt, as it
- * always has. Several are asked one at a time, and the last answer puts them all in the prompt as one reply.
- * `reply` is null for a skipped question. From the pane, the pane gets out of the way before the prompt fills.
+ * An answer pressed or typed in the band or the pane. One question sends its reply straight away. Several are
+ * asked one at a time, and the last answer sends them all as one reply. `reply` is null for a skipped question.
+ * From the pane, the pane gets out of the way before the reply goes.
  */
 async function choose($: EngineInterface, reply: string | null, isFromPane: boolean): Promise<void> {
   const shown = await read($, serve)
   if (shown === null || currentStep(shown) === null) return
   if (shown.questions.length === 1) {
     if (isFromPane) await $.ui.close({ id: PANE })
-    await propose($, reply ?? '')
+    await send($, reply ?? '', reply !== null)
     return
   }
   const next: Serve = { ...shown, answers: [...shown.answers, reply], isTyping: false }
   await $.state.set(SERVE, next)
   if (currentStep(next) !== null) return
   if (isFromPane) await $.ui.close({ id: PANE })
-  await propose($, formatAnswers(next))
+  await send($, formatAnswers(next), next.answers.every(a => a !== null))
 }
 
 /** A typed answer: an empty one is a skip, like the `skip` button. */
