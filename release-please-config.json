@@ -11,9 +11,7 @@
         { "type": "json", "path": "plugins/closing-time/.claude-plugin/plugin.json", "jsonpath": "$.version" },
         { "type": "json", "path": "plugins/grudge/.claude-plugin/plugin.json", "jsonpath": "$.version" },
         { "type": "json", "path": "plugins/previously-on/.claude-plugin/plugin.json", "jsonpath": "$.version" },
-        { "type": "json", "path": "plugins/receipts/.claude-plugin/plugin.json", "jsonpath": "$.version" },
         { "type": "json", "path": "plugins/show-and-tell/.claude-plugin/plugin.json", "jsonpath": "$.version" },
-        { "type": "json", "path": "plugins/shrink-ray/.claude-plugin/plugin.json", "jsonpath": "$.version" },
         { "type": "json", "path": "plugins/your-serve/.claude-plugin/plugin.json", "jsonpath": "$.version" }
       ]
     }

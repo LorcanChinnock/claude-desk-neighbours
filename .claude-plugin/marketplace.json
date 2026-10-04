@@ -4,7 +4,7 @@
     "name": "Lorcan Chinnock",
     "url": "https://github.com/LorcanChinnock"
   },
-  "description": "Seven small Claude Code mods that sit under your prompt: remember corrections, flag unanswered questions, check \"fixed!\" claims, trim noisy output, catch you up, show your work, and close out PRs.",
+  "description": "Five small Claude Code mods that sit under your prompt: remember corrections, flag unanswered questions, catch you up, show your work, and close out PRs.",
   "metadata": {
     "pluginRoot": "./plugins"
   },
@@ -18,16 +18,6 @@
       "name": "your-serve",
       "source": "your-serve",
       "description": "🎾 Tells you when Claude needs you: one line with the question it ended on, and its answers as buttons."
-    },
-    {
-      "name": "receipts",
-      "source": "receipts",
-      "description": "🧾 Checks claims and leftovers: notes when Claude says done with nothing run since its last edit, and debug crumbs it added."
-    },
-    {
-      "name": "shrink-ray",
-      "source": "shrink-ray",
-      "description": "🔫 Shrinks what the model reads: big pastes and long command output, with the full original saved outside the project."
     },
     {
       "name": "previously-on",
