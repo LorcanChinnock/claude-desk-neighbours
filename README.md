@@ -4,7 +4,7 @@
 
 <p align="center">
   <a href="https://github.com/LorcanChinnock/claude-desk-neighbours/actions/workflows/validate.yml"><img src="https://github.com/LorcanChinnock/claude-desk-neighbours/actions/workflows/validate.yml/badge.svg" alt="CI"></a>
-  <img src="https://img.shields.io/badge/Claude%20Code-2.1.288-d97757" alt="Built for Claude Code 2.1.288">
+  <img src="https://img.shields.io/badge/Claude%20Code-2.1.289-d97757" alt="Built for Claude Code 2.1.289">
   <a href="LICENSE"><img src="https://img.shields.io/badge/license-MIT-blue" alt="MIT license"></a>
 </p>
 
@@ -231,7 +231,7 @@ Here's what goes on behind the scenes, so you know before you install:
 ## Requirements
 
 Desk Neighbours are mods, which means they're plugins written against Claude Code's function-hook API. That API
-is still in early access. They're built and tested on Claude Code 2.1.288, and since the API can change between
+is still in early access. They're built and tested on Claude Code 2.1.289, and since the API can change between
 releases, a newer Claude Code might need a newer version of these plugins. If a mod doesn't seem to be doing
 anything, `claude --debug` will log why it didn't load. Please
 [open an issue](https://github.com/LorcanChinnock/claude-desk-neighbours/issues) and include that line.
