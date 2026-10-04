@@ -60,5 +60,8 @@
       "description": "Stop watching when nothing has moved for this long.",
       "default": 60
     }
-  }
+  },
+  "homepage": "https://github.com/LorcanChinnock/claude-desk-neighbours/tree/main/plugins/closing-time",
+  "repository": "https://github.com/LorcanChinnock/claude-desk-neighbours",
+  "license": "MIT"
 }

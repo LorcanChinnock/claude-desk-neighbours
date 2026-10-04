@@ -4,7 +4,7 @@
     "name": "Lorcan Chinnock",
     "url": "https://github.com/LorcanChinnock"
   },
-  "description": "Lorcan's Claude Code skills, hooks and mods",
+  "description": "Seven small Claude Code mods that sit under your prompt: remember corrections, flag unanswered questions, check \"fixed!\" claims, trim noisy output, catch you up, show your work, and close out PRs.",
   "metadata": {
     "pluginRoot": "./plugins"
   },

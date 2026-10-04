@@ -20,5 +20,8 @@
       "description": "Speak \"Claude needs a decision\" along with the toast.",
       "default": false
     }
-  }
+  },
+  "homepage": "https://github.com/LorcanChinnock/claude-desk-neighbours/tree/main/plugins/your-serve",
+  "repository": "https://github.com/LorcanChinnock/claude-desk-neighbours",
+  "license": "MIT"
 }
