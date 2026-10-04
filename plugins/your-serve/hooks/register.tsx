@@ -11,9 +11,8 @@ const history = atom(HISTORY, [])
 const PANE = 'your-serve'
 const TITLE = '🎾 Your Serve'
 
-// Band hotkeys are digits, which press from an empty prompt with no ctrl+x tab first. The five
-// Desk Neighbours split them so none clash: Your Serve 1–3, Grudge 4–5, Receipts 6–8, Shrink Ray 9,
-// Previously On 0. The pane uses the same digits, so an answer has one key everywhere.
+// Band hotkeys are digits, which press from an empty prompt with no ctrl+x tab first. The Desk
+// Neighbours split them so none clash: Your Serve 1–3, Grudge 4–5, Previously On 0. The pane uses the same digits, so an answer has one key everywhere.
 const HOTKEYS = ['1', '2', '3'] as const
 const TAIL = 400
 // How much of the reply's end Haiku reads: room for a long list of questions with their context.
