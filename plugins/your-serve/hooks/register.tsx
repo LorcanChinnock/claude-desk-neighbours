@@ -67,7 +67,7 @@ export function toServe(verdict: Record<string, unknown> | null): Serve | null {
     const asked = toQuestion(one)
     if (asked !== null) questions.push(asked)
   }
-  return questions.length === 0 ? null : { questions, answers: [] }
+  return questions.length === 0 ? null : { questions, answers: [], isTyping: false }
 }
 
 function toQuestion(item: unknown): ServeQuestion | null {
@@ -138,8 +138,8 @@ export function formatAnswers(shown: Serve): string {
 }
 
 /**
- * An answer pressed in the band or the pane. One question puts its reply straight in the prompt, as it always
- * has. Several are asked one at a time, and the last answer puts them all in the prompt as one reply.
+ * An answer pressed or typed in the band or the pane. One question puts its reply straight in the prompt, as it
+ * always has. Several are asked one at a time, and the last answer puts them all in the prompt as one reply.
  * `reply` is null for a skipped question. From the pane, the pane gets out of the way before the prompt fills.
  */
 async function choose($: EngineInterface, reply: string | null, isFromPane: boolean): Promise<void> {
@@ -150,11 +150,27 @@ async function choose($: EngineInterface, reply: string | null, isFromPane: bool
     await propose($, reply ?? '')
     return
   }
-  const next: Serve = { ...shown, answers: [...shown.answers, reply] }
+  const next: Serve = { ...shown, answers: [...shown.answers, reply], isTyping: false }
   await $.state.set(SERVE, next)
   if (currentStep(next) !== null) return
   if (isFromPane) await $.ui.close({ id: PANE })
   await propose($, formatAnswers(next))
+}
+
+/** A typed answer: an empty one is a skip, like the `skip` button. */
+async function chooseTyped($: EngineInterface, value: string, isFromPane: boolean): Promise<void> {
+  const reply = value.replace(/\s+/g, ' ').trim()
+  await choose($, reply === '' ? null : reply, isFromPane)
+}
+
+/**
+ * `other` pressed: the current question's buttons give way to a field. The field takes the `other` button's key,
+ * so the focus ring that was on the button is on the field.
+ */
+async function startTyping($: EngineInterface): Promise<void> {
+  const shown = await read($, serve)
+  if (shown === null || currentStep(shown) === null) return
+  await $.state.set(SERVE, { ...shown, isTyping: true })
 }
 
 async function clear($: EngineInterface): Promise<void> {
@@ -247,7 +263,10 @@ export const register: Register = (on, options) => {
     const shown = await read($, serve)
     if (shown === null) return next(e)
     const below = await next(e)
-    const { Box, Text, Button } = $.ui.resolve(e)
+    const elements = $.ui.resolve(e)
+    const { Box, Text, Button } = elements
+    // The mobile app draws no field, so there `other` isn't offered and a question is skipped instead.
+    const Input = 'Input' in elements ? elements.Input : null
     const current = currentStep(shown)
     const count = shown.questions.length
     const isMany = count > 1
@@ -264,16 +283,23 @@ export const register: Register = (on, options) => {
           </Box>
           {current !== null && (current.asked.options.length > 0 || isMany) && (
             <Box flexShrink={0} flexWrap="wrap" gap={1}>
-              {current.asked.options.map((option, index) => (
-                <Button
-                  key={`serve-${index + 1}`}
-                  hotkey={HOTKEYS[index]}
-                  plain
-                  label={option.label}
-                  onPress={() => void choose($, option.reply, false)}
-                />
-              ))}
-              {/* No digit left to spare: a skipped question is answered by typing in the prompt at the end. */}
+              {shown.isTyping && Input !== null ? (
+                <Input key="serve-other" placeholder="your answer" submitLabel="answer" autoFocus onSubmit={value => void chooseTyped($, value, false)} />
+              ) : (
+                current.asked.options.map((option, index) => (
+                  <Button
+                    key={`serve-${index + 1}`}
+                    hotkey={HOTKEYS[index]}
+                    plain
+                    label={option.label}
+                    onPress={() => void choose($, option.reply, false)}
+                  />
+                ))
+              )}
+              {/* No digit left to spare for these two: they're clicked, or reached with the focus ring. */}
+              {isMany && !shown.isTyping && Input !== null && (
+                <Button key="serve-other" plain dimColor label="other" onPress={() => void startTyping($)} />
+              )}
               {isMany && <Button key="serve-skip" plain dimColor label="skip" onPress={() => void choose($, null, false)} />}
             </Box>
           )}
@@ -297,12 +323,15 @@ export const register: Register = (on, options) => {
   })
 
   on('ui.render', { component: 'Pane', requestId: PANE }, async ($, e) => {
-    const { Box, Text, Button } = $.ui.resolve(e)
+    const elements = $.ui.resolve(e)
+    const { Box, Text, Button } = elements
+    const Input = 'Input' in elements ? elements.Input : null
     const shown = await read($, serve)
     const waiting = new Set(shown?.questions.map(asked => asked.question))
     const earlier = (await read($, history)).filter(asked => !waiting.has(asked.question))
     const current = shown === null ? null : currentStep(shown)
     const isMany = shown !== null && shown.questions.length > 1
+    const isTyping = shown?.isTyping === true && Input !== null
     const toast = `toast after ${Math.round(toastAfterMs / 1000)}s · voice ${shouldSpeak ? 'on' : 'off'}`
     return (
       <Box flexDirection="column">
@@ -325,23 +354,36 @@ export const register: Register = (on, options) => {
         )}
         {current !== null && (current.asked.options.length > 0 || isMany) && (
           <Box flexDirection="row" gap={1} marginTop={1}>
-            {current.asked.options.map((option, index) => (
+            {isTyping && Input !== null ? (
+              <Input key="pane-serve-other" placeholder="your answer" submitLabel="answer" autoFocus onSubmit={value => void chooseTyped($, value, true)} />
+            ) : (
+              current.asked.options.map((option, index) => (
+                <Button
+                  key={`pane-serve-${index + 1}`}
+                  hotkey={HOTKEYS[index]}
+                  plain
+                  label={option.label}
+                  autoFocus={index === 0 ? true : undefined}
+                  onPress={() => void choose($, option.reply, true)}
+                />
+              ))
+            )}
+            {isMany && !isTyping && Input !== null && (
               <Button
-                key={`pane-serve-${index + 1}`}
-                hotkey={HOTKEYS[index]}
+                key="pane-serve-other"
                 plain
-                label={option.label}
-                autoFocus={index === 0 ? true : undefined}
-                onPress={() => void choose($, option.reply, true)}
+                dimColor
+                label="other"
+                autoFocus={current.asked.options.length === 0 ? true : undefined}
+                onPress={() => void startTyping($)}
               />
-            ))}
+            )}
             {isMany && (
               <Button
                 key="pane-serve-skip"
                 plain
                 dimColor
                 label="skip"
-                autoFocus={current.asked.options.length === 0 ? true : undefined}
                 onPress={() => void choose($, null, true)}
               />
             )}

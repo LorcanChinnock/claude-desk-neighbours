@@ -6,9 +6,10 @@ export type ServeQuestion = { question: string; options: ServeOption[] }
 
 /**
  * What a finished turn left for the person: its questions in order, and the replies given so far. The band
- * asks `questions[answers.length]`; a `null` answer was skipped, to be typed in the prompt.
+ * asks `questions[answers.length]`; a `null` answer was skipped, to be typed in the prompt. `isTyping` is set
+ * while the person types their own answer to that question under `other`.
  */
-export type Serve = { questions: ServeQuestion[]; answers: (string | null)[] }
+export type Serve = { questions: ServeQuestion[]; answers: (string | null)[]; isTyping: boolean }
 
 /** A question a turn ended on, for the pane's list of earlier ones. */
 export type ServeAsked = { question: string; at: number }

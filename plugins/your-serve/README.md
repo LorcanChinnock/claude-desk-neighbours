@@ -25,7 +25,7 @@ subagent turns are ignored.
 If Claude asks several things at once, you get them one at a time, however many there are:
 
 ```
-🎾 Your serve (2/3): What should the new timeout be?          1: 30s  2: 60s  skip
+🎾 Your serve (2/3): What should the new timeout be?          1: 30s  2: 60s  other  skip
 ```
 
 Each answer takes you to the next question. After the last one, they all go into your prompt as a single reply:
@@ -36,11 +36,15 @@ Each answer takes you to the next question. After the last one, they all go into
 3. Add a retry? Yes, add a retry.
 ```
 
-If you skip a question, or it had no clear options, it's left unanswered so you can type your own answer after
-it before sending. You have to click `skip` because the digits after 3 belong to the other Desk Neighbours.
+If none of the answers fit, click `other` and type your own. Enter answers the question with what you typed and
+moves on, the same as pressing an answer. If you skip a question, or press Enter on an empty `other`, it's left
+unanswered so you can type your answer after it in the prompt before sending. You have to click `other` and
+`skip` (or reach them with Tab) because the digits after 3 belong to the other Desk Neighbours. The mobile app
+can't show a text field, so there you only get `skip`.
 
 Nothing gets cut off. If the question and its answers don't fit on one line, the answers wrap onto the next one.
-Only three answers get buttons, so for anything else just type it.
+Only three answers get buttons. For anything else, use `other`, or with a single question just type it in the
+prompt.
 
 Your Serve reads the text of Claude's answer, so it won't show questions Claude asks through its own question
 picker. You've already got the picker in front of you anyway.
