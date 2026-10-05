@@ -1,5 +1,12 @@
 # Changelog
 
+## [1.0.0](https://github.com/LorcanChinnock/claude-desk-neighbours/compare/v1.0.0...v1.0.0) (2026-10-05)
+
+
+### Bug Fixes
+
+* **closing-time:** act on review comments from anyone, and find the PR's worktree ([#28](https://github.com/LorcanChinnock/claude-desk-neighbours/issues/28)) ([c4de219](https://github.com/LorcanChinnock/claude-desk-neighbours/commit/c4de219213c508fdc7d58e346834c2966bfb9bae))
+
 ## [1.0.0](https://github.com/LorcanChinnock/claude-desk-neighbours/compare/v0.7.1...v1.0.0) (2026-10-04)
 
 
