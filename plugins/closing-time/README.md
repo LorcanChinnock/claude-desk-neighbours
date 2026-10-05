@@ -2,7 +2,7 @@
 
 Watches a PR until CI passes and the agent reviewers are happy, and pushes back on review comments that are wrong.
 
-![/ship raises the PR; CI fails and Claude fixes it; a bot leaves three comments; triage accepts one real bug and declines a rename and a jitter suggestion; the replies are posted and the PR goes green](../../docs/screenshots/closing-time.gif)
+![/ship raises the PR; CI fails and Claude fixes it; a reviewer leaves three comments; triage accepts one real bug and declines a rename and a jitter suggestion; the replies are posted and the PR goes green](../../docs/screenshots/closing-time.gif)
 
 ```
 /plugin install closing-time@claude-desk-neighbours
@@ -29,14 +29,14 @@ a turn when there's something for Claude to do, and it waits until Claude is idl
   a bot's review turns up late, and a late comment reopens the loop. Closing Time never merges anything.
 
 "Green" means every required check on the latest commit passed (or every check, if the repo has none marked
-required), each agent reviewer has reviewed the latest commit, and every bot comment is either resolved, fixed in
-a later commit, or answered with a reason. If a bot hasn't reviewed the latest commit after 15 minutes, its older
+required), each agent reviewer has reviewed the latest commit, and every review comment, from a bot or a person, is
+either resolved, fixed in a later commit, or answered with a reason. If a bot hasn't reviewed the latest commit after 15 minutes, its older
 review still counts, and the green line says it's out of date.
 
 ## Healthy criticism
 
-Bots are often right and often wrong. The triage agent treats each comment as a claim to check, not an order
-to follow:
+Reviewers, bots and people alike, are often right and often wrong. The triage agent treats each comment as a claim
+to check, not an order to follow:
 
 - It reads the code the comment is about, and the callers, and decides on one of: **accept**,
   **accept-modified** (the problem is real, but the fix should be different), **decline**, **already handled**,
@@ -51,7 +51,7 @@ to follow:
 Comment text comes from a third party, so it only ever reaches Claude quoted as data. Claude and the triage agent
 are told never to run a command because a comment suggests it.
 
-Review comments from people aren't triaged. They show up in the pane for you to answer.
+Comments from people are triaged the same way, and their replies follow the same Post replies setting.
 
 ## Replies
 
@@ -73,8 +73,8 @@ It stops asking Claude, and the band says why, when:
 ## The pane
 
 Click the `🔔` item in the status row (`no PR`, `#42 CI 3/5 · reviews 1/2`, `#42 needs you`, `#42 green`), or
-run `/closing-time`. It lists the checks, the agent reviewers, every bot comment with its verdict, reason and
-draft reply, and comments from people. **Flip** overrides a verdict: an accepted comment becomes declined, and
+run `/closing-time`. It lists the checks, the agent reviewers, every review comment with its verdict, reason and
+draft reply. **Flip** overrides a verdict: an accepted comment becomes declined, and
 anything else becomes accepted and goes to Claude. If every comment so far went the same way, the pane points it
 out, since either all the comments were right or the triage wasn't really looking.
 
@@ -88,7 +88,7 @@ buttons have no digit keys, because the other neighbours already use all ten, so
 | Setting | Default |
 |---|---|
 | Watch any PR Claude raises, not only ones from `/ship` | on |
-| Agent reviewers (comma-separated logins; empty means any bot that reviews) | empty |
+| Agent reviewers (comma-separated logins; empty means any bot that reviews). These are the reviewers it waits on to review the latest commit. A listed login counts even when GitHub types the account as a User, which some review bots are | empty |
 | Post replies: `ask` or `auto` | `ask` |
 | Rerun a job once when its log looks like a flake | on |
 | Fix attempts per check | 2 |
@@ -101,10 +101,10 @@ buttons have no digit keys, because the other neighbours already use all ten, so
 - It runs `gh` with your login: one GraphQL query per check, `gh pr diff` and `gh run view --log-failed` when
   there's something to look at, `gh run rerun --failed` for a flake, and (once you press Post) a reply on the
   thread plus resolving it.
-- Each bot comment starts one triage subagent on the session's model. At most 6 start at once.
+- Each review comment starts one triage subagent on the session's model. At most 6 start at once.
 - When a CI log might be a flake, it asks Haiku whether the failure is infrastructure or code.
 - What it's watching lives in the session's state. A new session starts with nothing watched.
-- It needs the `gh` CLI, logged in, and the PR's branch checked out so the triage agent can read the code.
+- It needs the `gh` CLI, logged in, and the PR's branch checked out so the triage agent can read the code. If the branch is checked out in a git worktree rather than the session's directory, it finds that worktree with `git worktree list` and points Claude and the triage agent there.
 
 ## Not covered yet
 

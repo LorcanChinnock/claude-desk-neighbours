@@ -17,7 +17,7 @@
     "reviewers": {
       "type": "string",
       "title": "Agent reviewers",
-      "description": "Comma-separated bot logins whose reviews must be green (e.g. copilot-pull-request-reviewer, coderabbitai). Empty means every bot that reviews the PR.",
+      "description": "Comma-separated bot logins whose reviews must be green (e.g. copilot-pull-request-reviewer, coderabbitai). Empty means every bot that reviews the PR. A listed login counts as an agent reviewer even when GitHub types the account as a User (some review bots comment from a user account).",
       "default": ""
     },
     "postReplies": {
