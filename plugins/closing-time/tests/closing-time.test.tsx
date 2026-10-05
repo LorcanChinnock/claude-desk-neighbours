@@ -93,9 +93,9 @@ test('only required checks block once any check is required', () => {
   expect(out.actions.filter(a => a.kind === 'ci')).toEqual([])
 })
 
-test('bot threads are triaged before anything changes; human threads are only surfaced', () => {
+test('every thread is triaged before anything changes, whoever wrote it', () => {
   const out = evaluate(watchOf(), snap({ threads: [{ id: 'T1', author: 'coderabbitai' }, { id: 'T2', author: 'sam', isBot: false }] }), 5 * MIN, LIMITS, false)
-  expect(out.actions).toEqual([{ kind: 'triage', threadIds: ['T1'] }])
+  expect(out.actions).toEqual([{ kind: 'triage', threadIds: ['T1', 'T2'] }])
   expect(out.watch.phase).toBe('triaging')
 
   // A thread already with an agent is not sent again.
@@ -383,23 +383,46 @@ test('its hint item joins the shared row, and the pane draws on every surface', 
   expect(opened).toEqual(['closing-time', 'closing-time'])
 })
 
-test('a reviewer named in the setting is triaged even when GitHub types its account as a User', () => {
+test("a review bot's User account is triaged like anyone, and the setting makes it a reviewer to wait for", () => {
   const g = { reviews: [{ login: 'review-bot', sha: 'aaaaaaa1', isBot: false }], threads: [{ id: 'T1', author: 'review-bot', isBot: false }] }
 
-  // Not listed: a User account reads as a person, so its comment is surfaced but never triaged.
+  // Not listed: its comment is triaged, but a User account is not an agent reviewer to wait on.
   const unlisted = evaluate(watchOf(), snap(g), 5 * MIN, LIMITS, false)
-  expect(unlisted.actions).toEqual([])
+  expect(unlisted.actions).toEqual([{ kind: 'triage', threadIds: ['T1'] }])
+  expect(unlisted.watch.reviewers).toEqual([])
 
-  // Listed (case and a `[bot]` suffix don't matter): its reviews and threads count as an agent reviewer's.
+  // Listed (case and a `[bot]` suffix don't matter): it counts as an agent reviewer.
   const limits = limitsOf({ reviewers: 'Review-Bot[bot]' })
   const listed = parseSnapshot(gql(g), limits.reviewers)
   expect(listed.reviews.map(r => [r.login, r.isBot])).toEqual([['review-bot', true]])
   expect(listed.threads.map(t => [t.author, t.isBot])).toEqual([['review-bot', true]])
-  expect(evaluate(watchOf(), listed, 5 * MIN, limits, false).actions).toEqual([{ kind: 'triage', threadIds: ['T1'] }])
+  expect(evaluate(watchOf(), listed, 5 * MIN, limits, false).watch.reviewers).toEqual([{ login: 'review-bot', state: 'reviewed' }])
 
   // Listing one reviewer does not turn every person into a bot.
   const mixed = parseSnapshot(gql({ threads: [{ id: 'T1', author: 'review-bot', isBot: false }, { id: 'T2', author: 'sam', isBot: false }] }), limits.reviewers)
   expect(mixed.threads.map(t => [t.author, t.isBot])).toEqual([['review-bot', true], ['sam', false]])
+})
+
+test("a person's accepted comment is fixed like a bot's, but its reply never posts on its own", () => {
+  const g = { threads: [{ id: 'T1', author: 'sam', isBot: false }, { id: 'T2', author: 'coderabbitai' }] }
+  const triaged = watchOf({
+    threads: snap(g).threads.map((t): ThreadRow => ({ ...t, verdict: verdict('decline', 'out of scope'), briefedRound: null, fixedInSha: null, reply: null })),
+  })
+
+  // Auto posting: only the bot's draft is posted; the person's waits and raises the band for you.
+  const auto = evaluate(triaged, snap(g), MIN, LIMITS, true)
+  expect(auto.actions.map(a => a.kind)).toEqual(['post'])
+  expect(auto.watch.isBandShown).toBe(true)
+  expect(auto.watch.threads.map(t => [t.author, t.reply?.status])).toEqual([['sam', 'draft'], ['coderabbitai', 'draft']])
+
+  // A person alone: auto posting has nothing it may post.
+  const personOnly = evaluate({ ...triaged, threads: triaged.threads.slice(0, 1) }, snap({ threads: [g.threads[0] as Thread] }), MIN, LIMITS, true)
+  expect(personOnly.actions.map(a => a.kind)).toEqual([])
+  expect(personOnly.watch.isBandShown).toBe(true)
+
+  // Their accepted comment is briefed to Claude to fix, exactly like a bot's.
+  const accepted = watchOf({ threads: snap(g).threads.slice(0, 1).map((t): ThreadRow => ({ ...t, verdict: verdict('accept'), briefedRound: null, fixedInSha: null, reply: null })) })
+  expect(evaluate(accepted, snap({ threads: [g.threads[0] as Thread] }), MIN, LIMITS, false).actions).toEqual([{ kind: 'reviews', threadIds: ['T1'] }])
 })
 
 test('a branch checked out in a worktree is found, and the briefs and triage point Claude there', () => {
