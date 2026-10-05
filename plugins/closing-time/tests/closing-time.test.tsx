@@ -2,7 +2,7 @@ import { expect, mock, test } from 'claude-code/testing'
 import type { On } from 'claude-code'
 
 import type { ClosingWatch, ThreadRow, Verdict } from '../types'
-import { driftHint, evaluate, isWatching, fileDiff, flipped, hintLabel, limitsOf, parseSnapshot, logLines, parseVerdict, quoted, replyFor, reviewBrief, withinRepo } from '../hooks/register'
+import { checkoutOf, ciBrief, driftHint, evaluate, isWatching, fileDiff, flipped, hintLabel, limitsOf, parseSnapshot, logLines, parseVerdict, quoted, replyFor, reviewBrief, triagePrompt, withinRepo } from '../hooks/register'
 import type { Limits, Snapshot } from '../hooks/register'
 
 const MIN = 60_000
@@ -381,4 +381,53 @@ test('its hint item joins the shared row, and the pane draws on every surface', 
     await pane.unmount()
   }
   expect(opened).toEqual(['closing-time', 'closing-time'])
+})
+
+test('a reviewer named in the setting is triaged even when GitHub types its account as a User', () => {
+  const g = { reviews: [{ login: 'review-bot', sha: 'aaaaaaa1', isBot: false }], threads: [{ id: 'T1', author: 'review-bot', isBot: false }] }
+
+  // Not listed: a User account reads as a person, so its comment is surfaced but never triaged.
+  const unlisted = evaluate(watchOf(), snap(g), 5 * MIN, LIMITS, false)
+  expect(unlisted.actions).toEqual([])
+
+  // Listed (case and a `[bot]` suffix don't matter): its reviews and threads count as an agent reviewer's.
+  const limits = limitsOf({ reviewers: 'Review-Bot[bot]' })
+  const listed = parseSnapshot(gql(g), limits.reviewers)
+  expect(listed.reviews.map(r => [r.login, r.isBot])).toEqual([['review-bot', true]])
+  expect(listed.threads.map(t => [t.author, t.isBot])).toEqual([['review-bot', true]])
+  expect(evaluate(watchOf(), listed, 5 * MIN, limits, false).actions).toEqual([{ kind: 'triage', threadIds: ['T1'] }])
+
+  // Listing one reviewer does not turn every person into a bot.
+  const mixed = parseSnapshot(gql({ threads: [{ id: 'T1', author: 'review-bot', isBot: false }, { id: 'T2', author: 'sam', isBot: false }] }), limits.reviewers)
+  expect(mixed.threads.map(t => [t.author, t.isBot])).toEqual([['review-bot', true], ['sam', false]])
+})
+
+test('a branch checked out in a worktree is found, and the briefs and triage point Claude there', () => {
+  const porcelain = [
+    'worktree /work/repo\nHEAD aaaa\nbranch refs/heads/master',
+    'worktree /work/worktrees/limits\nHEAD bbbb\nbranch refs/heads/feat/limits',
+    'worktree /work/worktrees/detached\nHEAD cccc\ndetached',
+  ].join('\n\n')
+  expect(checkoutOf(porcelain, 'feat/limits')).toBe('/work/worktrees/limits')
+  expect(checkoutOf(porcelain, 'master')).toBe('/work/repo')
+  expect(checkoutOf(porcelain, 'feat/other')).toBeNull()
+  // `feat/limits` must not match a longer branch name that merely starts with it.
+  expect(checkoutOf('worktree /w\nbranch refs/heads/feat/limits-v2', 'feat/limits')).toBeNull()
+
+  const w = watchOf({ branch: 'feat/limits', title: 'Add rate limits' })
+  const t: ThreadRow = { id: 'T1', commentId: 1, author: 'review-bot', isBot: true, path: 'src/a.ts', line: 3, body: 'x', url: '', isResolved: false, verdict: verdict('accept'), briefedRound: null, fixedInSha: null, reply: null }
+
+  // Without a separate checkout the wording is unchanged.
+  expect(triagePrompt(w, t, '')).toContain('checked out in your working directory.')
+  expect(reviewBrief(w, [t], LIMITS)).not.toContain('checked out at')
+
+  expect(triagePrompt(w, t, '', '/work/worktrees/limits')).toContain('checked out at /work/worktrees/limits, not in your working directory')
+  expect(reviewBrief(w, [t], LIMITS, '/work/worktrees/limits')).toContain("checked out at /work/worktrees/limits, not in the session's directory")
+  expect(ciBrief(w, [{ check: { name: 'test', state: 'failed', isRequired: true, runId: 7 }, log: '' }], LIMITS, '/work/worktrees/limits')).toContain('checked out at /work/worktrees/limits')
+})
+
+test('neither checkout path is left in a verdict that may be posted on the PR', () => {
+  const v: Verdict = { kind: 'decline', reason: 'see /work/repo/src/a.ts:3', evidence: '/work/worktrees/limits/src/b.ts:9', change: '', isOverridden: false }
+  const out = withinRepo(v, '/work/repo', '/work/worktrees/limits')
+  expect([out.reason, out.evidence]).toEqual(['see src/a.ts:3', 'src/b.ts:9'])
 })

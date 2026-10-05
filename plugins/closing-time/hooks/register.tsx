@@ -102,8 +102,13 @@ function statusState(state: string): CheckRow['state'] {
   return 'failed'
 }
 
-/** The poll's GraphQL answer as a snapshot; throws when it is not one. */
-export function parseSnapshot(stdout: string): Snapshot {
+/**
+ * The poll's GraphQL answer as a snapshot; throws when it is not one. `reviewers` are logins to treat as agent
+ * reviewers whatever GitHub types the account as: some review bots comment from a `User` account, which would
+ * otherwise read as a person and never be triaged.
+ */
+export function parseSnapshot(stdout: string, reviewers: readonly string[] = []): Snapshot {
+  const isReviewer = (author: Record<string, unknown>) => author.__typename === 'Bot' || reviewers.includes(loginKey(str(author.login)))
   const pr = obj(obj(obj(obj(JSON.parse(stdout)).data).repository).pullRequest)
   const headSha = str(pr.headRefOid)
   if (headSha === '') throw new Error('no pull request in the answer')
@@ -131,7 +136,7 @@ export function parseSnapshot(stdout: string): Snapshot {
     checks: [...byName.values()],
     reviews: nodes(pr.reviews).map(r => ({
       login: loginKey(str(obj(r.author).login)),
-      isBot: obj(r.author).__typename === 'Bot',
+      isBot: isReviewer(obj(r.author)),
       sha: str(obj(r.commit).oid),
     })),
     threads: nodes(pr.reviewThreads).flatMap(t => {
@@ -142,7 +147,7 @@ export function parseSnapshot(stdout: string): Snapshot {
         id: str(t.id),
         commentId: typeof first.databaseId === 'number' ? first.databaseId : 0,
         author: loginKey(str(author.login)),
-        isBot: author.__typename === 'Bot',
+        isBot: isReviewer(author),
         path: str(t.path),
         line: typeof t.line === 'number' ? t.line : null,
         body: str(first.body).slice(0, MAX_BODY),
@@ -370,9 +375,37 @@ export const TRIAGE_SYSTEM = [
   ' "change": "for accept-modified: what to do instead; otherwise empty"}',
 ].join('\n')
 
-export function triagePrompt(w: ClosingWatch, t: ThreadRow, diff: string): string {
+/** Where `git worktree list --porcelain` has `branch` checked out, or null when it is not checked out anywhere. */
+export function checkoutOf(porcelain: string, branch: string): string | null {
+  for (const block of porcelain.split(/\n\s*\n/)) {
+    const lines = block.split('\n')
+    if (lines.includes(`branch refs/heads/${branch}`)) return lines.find(l => l.startsWith('worktree '))?.slice('worktree '.length) ?? null
+  }
+  return null
+}
+
+/**
+ * The directory the PR's branch is checked out in when that is not the session's own, else ''. A hint for the
+ * briefs, so any failure to work it out is an empty answer rather than a reason to skip the brief.
+ */
+async function checkoutDir($: EngineInterface, w: ClosingWatch): Promise<string> {
+  if (w.branch === '') return ''
+  try {
+    const listed = await $.process.run(['git', 'worktree', 'list', '--porcelain'], { timeoutMs: 10_000 })
+    const dir = listed.exitCode === 0 ? checkoutOf(listed.stdout, w.branch) : null
+    if (dir === null) return ''
+    const root = (await $.session.repo())?.root ?? (await $.session.root())
+    return dir.replace(/\/$/, '') === root.replace(/\/$/, '') ? '' : dir
+  } catch {
+    return ''
+  }
+}
+
+const inDir = (dir: string) => `The branch is checked out at ${dir}, not in the session's directory: read and edit files there.`
+
+export function triagePrompt(w: ClosingWatch, t: ThreadRow, diff: string, dir = ''): string {
   return [
-    `PR #${w.number} "${w.title}" on branch ${w.branch}, checked out in your working directory.`,
+    `PR #${w.number} "${w.title}" on branch ${w.branch}, ${dir === '' ? 'checked out in your working directory.' : `checked out at ${dir}, not in your working directory: read the files there.`}`,
     `Review comment by ${t.author} on ${where(t)}:`,
     quoted(t),
     '',
@@ -389,8 +422,8 @@ export function clip(text: string, max: number): string {
 }
 
 /** The verdict with the checkout's own path taken out: a reply quoting it would post a local path on the PR. */
-export function withinRepo(v: Verdict, root: string): Verdict {
-  const strip = (text: string) => (root === '' ? text : text.split(`${root.replace(/\/$/, '')}/`).join(''))
+export function withinRepo(v: Verdict, ...roots: string[]): Verdict {
+  const strip = (text: string) => roots.filter(r => r !== '').reduce((out, root) => out.split(`${root.replace(/\/$/, '')}/`).join(''), text)
   return { ...v, reason: strip(v.reason), evidence: strip(v.evidence), change: strip(v.change) }
 }
 
@@ -415,9 +448,10 @@ export function parseVerdict(answer: string): Verdict {
   }
 }
 
-export function ciBrief(w: ClosingWatch, failing: readonly { check: CheckRow; log: string }[], limits: Limits): string {
+export function ciBrief(w: ClosingWatch, failing: readonly { check: CheckRow; log: string }[], limits: Limits, dir = ''): string {
   const lines = [
     `🔔 Closing Time: CI failed on PR #${w.number} at ${short(w.headSha)}.`,
+    ...(dir === '' ? [] : [inDir(dir)]),
     '',
   ]
   for (const { check, log } of failing) {
@@ -435,8 +469,8 @@ export function ciBrief(w: ClosingWatch, failing: readonly { check: CheckRow; lo
   return lines.join('\n')
 }
 
-export function reviewBrief(w: ClosingWatch, fix: readonly ThreadRow[], limits: Limits): string {
-  const lines = [`🔔 Closing Time: review triage for PR #${w.number}, round ${w.rounds + 1} of ${limits.maxRounds}.`, '', 'Accepted, to fix:']
+export function reviewBrief(w: ClosingWatch, fix: readonly ThreadRow[], limits: Limits, dir = ''): string {
+  const lines = [`🔔 Closing Time: review triage for PR #${w.number}, round ${w.rounds + 1} of ${limits.maxRounds}.`, ...(dir === '' ? [] : [inDir(dir)]), '', 'Accepted, to fix:']
   fix.forEach((t, i) => {
     const v = t.verdict
     lines.push(`${i + 1}. ${where(t)} (${t.author}): ${v?.reason ?? ''}${v?.evidence ? ` Evidence: ${v.evidence}.` : ''}`)
@@ -512,7 +546,7 @@ async function poll($: EngineInterface, limits: Limits, isAutoPost: boolean): Pr
     const w = await read($, watch)
     if (w === null || !isWatching(w, now)) return
     const stdout = await ghOk($, ['api', 'graphql', '-f', `query=${QUERY}`, '-F', `owner=${w.owner}`, '-F', `name=${w.repo}`, '-F', `number=${w.number}`])
-    const snap = parseSnapshot(stdout)
+    const snap = parseSnapshot(stdout, limits.reviewers)
     // A second pass over the same snapshot when triage settled at once (a spawn that started no agent).
     for (let pass = 0; pass < 2; pass += 1) {
       let actions: Action[] = []
@@ -597,7 +631,7 @@ async function briefCi($: EngineInterface, checks: readonly CheckRow[], limits: 
     toBrief.push({ check, log })
   }
   // Sent before it is recorded: a submit the engine refuses leaves this commit unbriefed, to try again next poll.
-  if (toBrief.length > 0) await $.prompt.submit({ text: ciBrief(w, toBrief, limits) })
+  if (toBrief.length > 0) await $.prompt.submit({ text: ciBrief(w, toBrief, limits, await checkoutDir($, w)) })
   const key = `${w.headSha}:ci`
   await update($, watch, now => now === null ? null : {
     ...now,
@@ -612,13 +646,14 @@ async function triage($: EngineInterface, threadIds: readonly string[]): Promise
   const w = await read($, watch)
   if (w === null) return
   const diff = await ghOk($, ['pr', 'diff', String(w.number), '--repo', `${w.owner}/${w.repo}`], 60_000).catch(() => '')
+  const dir = await checkoutDir($, w)
   for (const id of threadIds) {
     const t = w.threads.find(x => x.id === id)
     if (t === undefined) continue
     const spawned = await $.agent.spawn({
       subagentType: TRIAGE_AGENT,
       description: `Triage ${t.author} on ${where(t)}`,
-      prompt: triagePrompt(w, t, fileDiff(diff, t.path)),
+      prompt: triagePrompt(w, t, fileDiff(diff, t.path), dir),
     }).catch((err: unknown) => ({ deny: err instanceof Error ? err.message : 'spawn failed', agentId: undefined }))
     const agentId = spawned.agentId
     await update($, watch, now => {
@@ -645,7 +680,7 @@ async function briefReviews($: EngineInterface, threadIds: readonly string[], li
   if (w === null) return
   const fix = w.threads.filter(t => threadIds.includes(t.id))
   if (fix.length === 0) return
-  await $.prompt.submit({ text: reviewBrief(w, fix, limits) })
+  await $.prompt.submit({ text: reviewBrief(w, fix, limits, await checkoutDir($, w)) })
   await update($, watch, now => now === null ? null : {
     ...now,
     rounds: now.rounds + 1,
@@ -835,7 +870,7 @@ export const register: Register = (on, options) => {
     const threadId = w?.triaging[agentId]
     if (threadId === undefined) return done
     const root = (await $.session.repo())?.root ?? (await $.session.root())
-    const verdict = withinRepo(e.reason === 'answer' ? parseVerdict(e.answer) : parseVerdict(''), root)
+    const verdict = withinRepo(e.reason === 'answer' ? parseVerdict(e.answer) : parseVerdict(''), root, w === null ? '' : await checkoutDir($, w))
     await update($, watch, now => {
       if (now === null) return null
       const { [agentId]: _, ...triaging } = now.triaging

@@ -88,7 +88,7 @@ buttons have no digit keys, because the other neighbours already use all ten, so
 | Setting | Default |
 |---|---|
 | Watch any PR Claude raises, not only ones from `/ship` | on |
-| Agent reviewers (comma-separated logins; empty means any bot that reviews) | empty |
+| Agent reviewers (comma-separated logins; empty means any bot that reviews). A listed login counts as an agent reviewer even when GitHub types the account as a User, which some review bots are | empty |
 | Post replies: `ask` or `auto` | `ask` |
 | Rerun a job once when its log looks like a flake | on |
 | Fix attempts per check | 2 |
@@ -104,7 +104,7 @@ buttons have no digit keys, because the other neighbours already use all ten, so
 - Each bot comment starts one triage subagent on the session's model. At most 6 start at once.
 - When a CI log might be a flake, it asks Haiku whether the failure is infrastructure or code.
 - What it's watching lives in the session's state. A new session starts with nothing watched.
-- It needs the `gh` CLI, logged in, and the PR's branch checked out so the triage agent can read the code.
+- It needs the `gh` CLI, logged in, and the PR's branch checked out so the triage agent can read the code. If the branch is checked out in a git worktree rather than the session's directory, it finds that worktree with `git worktree list` and points Claude and the triage agent there.
 
 ## Not covered yet
 
