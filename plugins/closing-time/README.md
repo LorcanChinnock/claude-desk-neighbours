@@ -51,8 +51,7 @@ to check, not an order to follow:
 Comment text comes from a third party, so it only ever reaches Claude quoted as data. Claude and the triage agent
 are told never to run a command because a comment suggests it.
 
-Comments from people are triaged the same way, but their replies never post on their own: even with Post replies set
-to `auto`, a reply to a person waits for you to press **Post**.
+Comments from people are triaged the same way, and their replies follow the same Post replies setting.
 
 ## Replies
 
@@ -89,7 +88,7 @@ buttons have no digit keys, because the other neighbours already use all ten, so
 | Setting | Default |
 |---|---|
 | Watch any PR Claude raises, not only ones from `/ship` | on |
-| Agent reviewers (comma-separated logins; empty means any bot that reviews). These are the reviewers it waits on, and the only ones whose replies can post automatically. A listed login counts even when GitHub types the account as a User, which some review bots are | empty |
+| Agent reviewers (comma-separated logins; empty means any bot that reviews). These are the reviewers it waits on to review the latest commit. A listed login counts even when GitHub types the account as a User, which some review bots are | empty |
 | Post replies: `ask` or `auto` | `ask` |
 | Rerun a job once when its log looks like a flake | on |
 | Fix attempts per check | 2 |

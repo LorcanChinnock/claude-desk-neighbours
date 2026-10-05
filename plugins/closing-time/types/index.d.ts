@@ -29,8 +29,6 @@ export type ThreadRow = {
   /** The first comment's REST id, which replying takes. */
   commentId: number
   author: string
-  /** An agent reviewer: the only author whose drafted reply may post without a press of Post. */
-  isBot: boolean
   path: string
   line: number | null
   body: string

@@ -104,8 +104,8 @@ function statusState(state: string): CheckRow['state'] {
 
 /**
  * The poll's GraphQL answer as a snapshot; throws when it is not one. `reviewers` are logins to treat as agent
- * reviewers whatever GitHub types the account as: some review bots comment from a `User` account, which would
- * otherwise read as a person and never be triaged.
+ * reviewers whatever GitHub types the account as: some review bots review from a `User` account, which would
+ * otherwise not be waited on.
  */
 export function parseSnapshot(stdout: string, reviewers: readonly string[] = []): Snapshot {
   const isReviewer = (author: Record<string, unknown>) => author.__typename === 'Bot' || reviewers.includes(loginKey(str(author.login)))
@@ -147,7 +147,6 @@ export function parseSnapshot(stdout: string, reviewers: readonly string[] = [])
         id: str(t.id),
         commentId: typeof first.databaseId === 'number' ? first.databaseId : 0,
         author: loginKey(str(author.login)),
-        isBot: isReviewer(author),
         path: str(t.path),
         line: typeof t.line === 'number' ? t.line : null,
         body: str(first.body).slice(0, MAX_BODY),
@@ -264,11 +263,9 @@ export function evaluate(prev: ClosingWatch, snap: Snapshot, now: number, limits
       actions.push({ kind: 'announce', phase })
       next.isBandShown = true
     }
-    const drafts = threads.filter(t => t.reply?.status === 'draft')
-    if (drafts.length > 0) {
-      if (isAutoPost && drafts.some(t => t.isBot)) actions.push({ kind: 'post' })
-      const needsYou = drafts.some(t => !isAutoPost || !t.isBot)
-      if (needsYou && !prev.threads.some(t => t.reply?.status === 'draft')) next.isBandShown = true
+    if (threads.some(t => t.reply?.status === 'draft')) {
+      if (isAutoPost) actions.push({ kind: 'post' })
+      else if (!prev.threads.some(t => t.reply?.status === 'draft')) next.isBandShown = true
     }
     return { watch: next, actions }
   }
@@ -582,7 +579,7 @@ async function act($: EngineInterface, action: Action, limits: Limits): Promise<
   if (action.kind === 'ci') return briefCi($, action.checks, limits)
   if (action.kind === 'triage') return triage($, action.threadIds)
   if (action.kind === 'reviews') return briefReviews($, action.threadIds, limits)
-  if (action.kind === 'post') return postReplies($, true)
+  if (action.kind === 'post') return postReplies($)
   const w = await read($, watch)
   if (w !== null) $.ui.toast(`🔔 #${w.number} ${action.phase === 'green' ? 'is green' : action.phase === 'stopped' ? 'no longer watched' : 'needs you'}: ${w.note}`)
 }
@@ -687,11 +684,10 @@ async function briefReviews($: EngineInterface, threadIds: readonly string[], li
   })
 }
 
-/** Posts the drafts. `isAuto` is the setting posting them unasked: that is only for an agent reviewer's threads, a person's wait for a press of Post. */
-async function postReplies($: EngineInterface, isAuto = false): Promise<void> {
+async function postReplies($: EngineInterface): Promise<void> {
   const w = await read($, watch)
   if (w === null) return
-  for (const t of w.threads.filter(x => x.reply?.status === 'draft' && (!isAuto || x.isBot))) {
+  for (const t of w.threads.filter(x => x.reply?.status === 'draft')) {
     const text = t.reply?.text ?? ''
     const done = await gh($, ['api', '-X', 'POST', `repos/${w.owner}/${w.repo}/pulls/${w.number}/comments/${t.commentId}/replies`, '-f', `body=${text}`]).catch(() => null)
     if (done?.exitCode !== 0) {
