@@ -1,6 +1,6 @@
 {
   "name": "closing-time",
-  "version": "1.0.0",
+  "version": "1.0.1",
   "description": "🔔 Closes the PR loop: watches a PR until CI and agent reviews are green, and weighs review comments before acting on them.",
   "author": {
     "name": "Lorcan Chinnock",
