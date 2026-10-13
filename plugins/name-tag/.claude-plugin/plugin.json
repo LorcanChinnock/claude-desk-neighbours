@@ -2,6 +2,7 @@
   "name": "name-tag",
   "version": "1.0.1",
   "description": "🏷️ Names your session for you: after a few prompts it gives an untitled session a short title, and leaves one you named yourself alone.",
+  "types": "./types/index.d.ts",
   "author": {
     "name": "Lorcan Chinnock",
     "url": "https://github.com/LorcanChinnock"
