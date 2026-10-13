@@ -1,5 +1,5 @@
 <p align="center">
-  <img src="docs/logo.png" width="760" alt="Desk Neighbours: five small colleagues for your Claude Code terminal. Grudge remembers, Your Serve nudges you, Previously On catches you up, Show & Tell shows you, Closing Time closes the PR.">
+  <img src="docs/logo.png" width="760" alt="Desk Neighbours: six small colleagues for your Claude Code terminal. Grudge remembers, Your Serve nudges you, Previously On catches you up, Show & Tell shows you, Closing Time closes the PR, Name Tag names your session.">
 </p>
 
 <p align="center">
@@ -137,8 +137,8 @@ than one:
 
 ## How they work together
 
-There's a status row under the prompt with one item for each neighbour you've installed, always in the same
-order. Click an item, or run its command, to open its pane. Open a few and they turn into tabs. Esc closes a pane.
+There's a status row under the prompt with one item for each installed neighbour that has one (Name Tag doesn't),
+always in the same order. Click an item, or run its command, to open its pane. Open a few and they turn into tabs. Esc closes a pane.
 
 ```
 ? for shortcuts   😤 3 grudges  🎾 ready  📺 on air  📸 4  🔔 #42 CI 3/5 · reviews 1/2
@@ -147,7 +147,7 @@ order. Click an item, or run its command, to open its pane. Open a few and they 
 When a neighbour has something to tell you, it gets a line in the band above the prompt. Your Serve always goes
 on top, and long lines wrap instead of getting cut off:
 
-![Claude Code with all five neighbours: a Your Serve question and a Previously On recap in the band, the status row below](docs/screenshots/previously-recap.png)
+![Claude Code with the five neighbours that have a status item: a Your Serve question and a Previously On recap in the band, the status row below](docs/screenshots/previously-recap.png)
 
 Buttons that write a prompt for you (Your Serve's answers) send it straight away. If you've already started
 typing, the text goes on the end of your draft instead, so you can finish it and send it yourself. To press one, type its digit into an empty prompt or click it. If there's already text in the prompt, press
