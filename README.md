@@ -1,5 +1,5 @@
 <p align="center">
-  <img src="docs/logo.png" width="760" alt="Desk Neighbours: five small colleagues for your Claude Code terminal. Grudge remembers, Your Serve nudges you, Previously On catches you up, Show & Tell shows you, Closing Time closes the PR.">
+  <img src="docs/logo.png" width="760" alt="Desk Neighbours: six small colleagues for your Claude Code terminal. Grudge remembers, Your Serve nudges you, Previously On catches you up, Show & Tell shows you, Closing Time closes the PR, Name Tag names your session.">
 </p>
 
 <p align="center">
@@ -18,7 +18,7 @@
 
 Claude Code does the actual work well. It's the stuff around the work that slips. You correct it and it's
 forgotten by the next session. It asks you something in the last line of a long reply. It has no way to catch
-you up when you come back from lunch. **Desk Neighbours** are five small mods for that kind of thing. They sit in a
+you up when you come back from lunch. **Desk Neighbours** are six small mods for that kind of thing. They sit in a
 status row under your prompt and only pipe up, in a single line above it, when there's something worth saying.
 
 ```
@@ -34,6 +34,7 @@ than one:
 /plugin install previously-on@claude-desk-neighbours
 /plugin install show-and-tell@claude-desk-neighbours
 /plugin install closing-time@claude-desk-neighbours
+/plugin install name-tag@claude-desk-neighbours
 ```
 
 ---
@@ -122,12 +123,22 @@ than one:
 
 [Everything Closing Time does →](plugins/closing-time)
 
+## 🏷️ Name Tag
+
+**Names your session after a few prompts, so you can tell your sessions apart when you resume one.**
+
+- Once you've sent 3 prompts, Haiku reads your first few messages and writes a title of 3 to 6 words. It's set on your
+  next prompt.
+- It names a session once, and leaves alone any session you've already named with `/rename`.
+
+[Everything Name Tag does →](plugins/name-tag)
+
 ---
 
 ## How they work together
 
-There's a status row under the prompt with one item for each neighbour you've installed, always in the same
-order. Click an item, or run its command, to open its pane. Open a few and they turn into tabs. Esc closes a pane.
+There's a status row under the prompt with one item for each installed neighbour that has one (Name Tag doesn't),
+always in the same order. Click an item, or run its command, to open its pane. Open a few and they turn into tabs. Esc closes a pane.
 
 ```
 ? for shortcuts   😤 3 grudges  🎾 ready  📺 on air  📸 4  🔔 #42 CI 3/5 · reviews 1/2
@@ -136,7 +147,7 @@ order. Click an item, or run its command, to open its pane. Open a few and they 
 When a neighbour has something to tell you, it gets a line in the band above the prompt. Your Serve always goes
 on top, and long lines wrap instead of getting cut off:
 
-![Claude Code with all five neighbours: a Your Serve question and a Previously On recap in the band, the status row below](docs/screenshots/previously-recap.png)
+![Claude Code with the five neighbours that have a status item: a Your Serve question and a Previously On recap in the band, the status row below](docs/screenshots/previously-recap.png)
 
 Buttons that write a prompt for you (Your Serve's answers) send it straight away. If you've already started
 typing, the text goes on the end of your draft instead, so you can finish it and send it yourself. To press one, type its digit into an empty prompt or click it. If there's already text in the prompt, press
@@ -165,6 +176,7 @@ You can change these in `/config`, or with `/plugin configure <plugin>@claude-de
 | `closing-time` | Rerun a job once when its log looks like a flake | on |
 | `closing-time` | Fix attempts per check / review rounds before handing over to you | 2 / 3 |
 | `closing-time` | Minutes to wait for a bot review / with no change before it stops watching | 15 / 60 |
+| `name-tag` | Name the session after this many prompts | 3 |
 
 ## What runs in the background
 
@@ -176,6 +188,8 @@ Here's what goes on behind the scenes, so you know before you install:
   Previously On's recap re-reads the session transcript once each time you come back, mostly from the prompt
   cache. Closing Time asks Haiku whether a failed CI log looks like a flake, and starts one read-only triage
   subagent on your session's model for each bot review comment.
+- **A title call.** Name Tag sends your first three prompts, cut to 300 characters each, to Haiku once per
+  session to write its title.
 - **GitHub, through `gh`.** Closing Time runs `gh` with your login while it watches a PR: a GraphQL query on
   each check, the PR diff and failed job logs when there's something to look at, and reruns of flaky jobs. It only
   posts replies to review threads when you press Post (or if you've set it to `auto`).

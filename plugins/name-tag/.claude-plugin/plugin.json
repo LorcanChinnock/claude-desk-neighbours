@@ -1,0 +1,20 @@
+{
+  "name": "name-tag",
+  "version": "1.0.1",
+  "description": "🏷️ Names your session for you: after a few prompts it gives an untitled session a short title, and leaves one you named yourself alone.",
+  "author": {
+    "name": "Lorcan Chinnock",
+    "url": "https://github.com/LorcanChinnock"
+  },
+  "userConfig": {
+    "afterPrompts": {
+      "type": "number",
+      "title": "Name after (prompts)",
+      "description": "How many prompts you send before the session is named. The title is set on your next prompt after that.",
+      "default": 3
+    }
+  },
+  "homepage": "https://github.com/LorcanChinnock/claude-desk-neighbours/tree/main/plugins/name-tag",
+  "repository": "https://github.com/LorcanChinnock/claude-desk-neighbours",
+  "license": "MIT"
+}

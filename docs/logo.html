@@ -1,0 +1,72 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<title>Desk Neighbours logo</title>
+<!-- Source for logo.png. Render with:
+  "/Applications/Google Chrome.app/Contents/MacOS/Google Chrome" --headless=new --disable-gpu --hide-scrollbars \
+    --default-background-color=00000000 --window-size=2220,1240 --virtual-time-budget=10000 \
+    --screenshot=docs/logo.png file://$PWD/docs/logo.html -->
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@400;700&family=Space+Grotesk:wght@500;700&display=block" rel="stylesheet">
+<style>
+  html, body { margin: 0; width: 2220px; height: 1240px; background: transparent; overflow: hidden; }
+  .window {
+    position: absolute; left: 100px; top: 97px; width: 2020px; height: 999px; box-sizing: border-box;
+    border-radius: 56px; border: 2px solid #262432;
+    background:
+      radial-gradient(ellipse 1050px 640px at 100% 0%, rgba(122, 40, 52, 0.62) 0%, rgba(122, 40, 52, 0) 100%),
+      linear-gradient(180deg, #2a2638 0%, #181720 100%);
+    overflow: hidden;
+  }
+  .dots { position: absolute; left: 34px; top: 33px; display: flex; gap: 16px; }
+  .dots i { width: 24px; height: 24px; border-radius: 50%; display: block; }
+  .dots i:nth-child(1) { background: #ff5f57; }
+  .dots i:nth-child(2) { background: #febc2e; }
+  .dots i:nth-child(3) { background: #28c840; }
+  .kicker {
+    position: absolute; left: 98px; top: 108px;
+    font: 700 22px/1 'JetBrains Mono', monospace; letter-spacing: 0.425em; color: #d97757; white-space: nowrap;
+  }
+  h1 {
+    position: absolute; left: 94px; top: 177px; margin: 0;
+    font: 700 125px/1.1 'Space Grotesk', sans-serif; letter-spacing: -0.02em; color: #fbf3ef;
+  }
+  .sub {
+    position: absolute; left: 98px; top: 369px; margin: 0;
+    font: 500 37px/54px 'Space Grotesk', sans-serif; color: #cdc8d6;
+  }
+  .cards { position: absolute; left: 98px; top: 556px; width: 1822px; display: flex; gap: 24px; }
+  .card {
+    flex: 1; height: 222px; box-sizing: border-box; border-radius: 20px;
+    background: #211f2a; border: 2px solid #35333d;
+    display: flex; flex-direction: column; align-items: center; justify-content: flex-start; padding-top: 22px; text-align: center;
+  }
+  .glyph { font-size: 62px; line-height: 1; margin-bottom: 38px; }
+  .name { font: 700 30px/1 'JetBrains Mono', monospace; color: #f4f1f8; }
+  .tag { font: 400 24px/1 'JetBrains Mono', monospace; letter-spacing: 0.08em; color: #8a8794; margin-top: 18px; }
+  .rule { position: absolute; left: 98px; top: 833px; width: 1822px; height: 2px; background: #303037; }
+  .prompt { position: absolute; left: 104px; top: 872px; font: 400 32px/1 'JetBrains Mono', monospace; color: #ece8f2; white-space: nowrap; display: flex; align-items: center; }
+  .prompt b { color: #d97757; font-weight: 700; margin-right: 10px; }
+  .prompt u { display: inline-block; width: 17px; height: 34px; background: #f4f1f8; margin-left: 4px; text-decoration: none; }
+</style>
+</head>
+<body>
+<div class="window">
+  <div class="dots"><i></i><i></i><i></i></div>
+  <div class="kicker">CLAUDE-DESK-NEIGHBOURS · FOR CLAUDE CODE</div>
+  <h1>Desk Neighbours</h1>
+  <p class="sub">Six small colleagues that sit around your terminal. One glyph,<br>one job each. Most turns they say nothing at all.</p>
+  <div class="cards">
+    <div class="card"><div class="glyph">😤</div><div class="name">grudge</div><div class="tag">remembers</div></div>
+    <div class="card"><div class="glyph">🎾</div><div class="name">your-serve</div><div class="tag">nudges you</div></div>
+    <div class="card"><div class="glyph">📺</div><div class="name">previously-on</div><div class="tag">catches you up</div></div>
+    <div class="card"><div class="glyph">📸</div><div class="name">show-and-tell</div><div class="tag">shows you</div></div>
+    <div class="card"><div class="glyph">🔔</div><div class="name">closing-time</div><div class="tag">closes the PR</div></div>
+    <div class="card"><div class="glyph">🏷️</div><div class="name">name-tag</div><div class="tag">names sessions</div></div>
+  </div>
+  <div class="rule"></div>
+  <div class="prompt"><b>❯</b>/plugin marketplace add LorcanChinnock/claude-desk-neighbours<u></u></div>
+</div>
+</body>
+</html>

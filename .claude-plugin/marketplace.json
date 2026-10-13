@@ -4,7 +4,7 @@
     "name": "Lorcan Chinnock",
     "url": "https://github.com/LorcanChinnock"
   },
-  "description": "Five small Claude Code mods that sit under your prompt: remember corrections, flag unanswered questions, catch you up, show your work, and close out PRs.",
+  "description": "Six small Claude Code mods that sit under your prompt: remember corrections, flag unanswered questions, catch you up, show your work, close out PRs, and name your session.",
   "metadata": {
     "pluginRoot": "./plugins"
   },
@@ -33,6 +33,11 @@
       "name": "closing-time",
       "source": "closing-time",
       "description": "🔔 Closes the PR loop: watches a PR until CI and agent reviews are green, and weighs review comments before acting on them."
+    },
+    {
+      "name": "name-tag",
+      "source": "name-tag",
+      "description": "🏷️ Names your session for you: after a few prompts it gives an untitled session a short title, and leaves one you named yourself alone."
     }
   ]
 }
