@@ -148,7 +148,9 @@ export function currentStep(shown: Serve): { step: number; asked: ServeQuestion 
 
 /** Every question with its answer, one per line; a skipped one is left for the person to type after. */
 export function formatAnswers(shown: Serve): string {
-  return shown.questions.map((asked, index) => `${index + 1}. ${asked.question} ${shown.answers[index] ?? ''}`.trimEnd()).join('\n')
+  return shown.questions
+    .map((asked, index) => `${index + 1}. ${asked.question} ${(shown.answers[index] ?? '').replace(/\n/g, '\n   ')}`.trimEnd())
+    .join('\n')
 }
 
 /**
@@ -171,19 +173,14 @@ async function choose($: EngineInterface, reply: string | null, isFromPane: bool
   await send($, formatAnswers(next), next.answers.every(a => a !== null))
 }
 
-/** A typed answer: an empty one is a skip, like the `skip` button. */
-async function chooseTyped($: EngineInterface, value: string, isFromPane: boolean): Promise<void> {
-  const reply = value.replace(/\s+/g, ' ').trim()
-  await choose($, reply === '' ? null : reply, isFromPane)
-}
-
 /**
- * `other` pressed: the current question's buttons give way to a field. The field takes the `other` button's key,
- * so the focus ring that was on the button is on the field.
+ * `other` pressed: the person types the answer in the prompt box, which takes long and multiline text where a
+ * field in the band can't. The next prompt they send answers the current question (see `prompt.submit`).
  */
-async function startTyping($: EngineInterface): Promise<void> {
+async function startTyping($: EngineInterface, isFromPane: boolean): Promise<void> {
   const shown = await read($, serve)
   if (shown === null || currentStep(shown) === null) return
+  if (isFromPane) await $.ui.close({ id: PANE })
   await $.state.set(SERVE, { ...shown, isTyping: true })
 }
 
@@ -257,7 +254,23 @@ export const register: Register = (on, options) => {
     return done
   })
 
-  on('prompt.submit', ($, e, next) => {
+  on('prompt.submit', async ($, e, next) => {
+    const shown = await read($, serve)
+    if (shown?.isTyping === true && e.origin.kind === 'composer' && e.command === undefined) {
+      const answered: Serve = { ...shown, answers: [...shown.answers, e.text.trim()], isTyping: false }
+      if (currentStep(answered) !== null) {
+        await $.state.set(SERVE, answered)
+        return { drop: `🎾 Answer ${answered.answers.length} of ${answered.questions.length} noted` }
+      }
+      if (answered.answers.every(a => a !== null)) {
+        generation += 1
+        await clear($)
+        return next({ ...e, text: formatAnswers(answered) })
+      }
+      await $.state.set(SERVE, answered)
+      await $.prompt.fill({ text: formatAnswers(answered), mode: 'replace' })
+      return { drop: '🎾 Your answers are in your prompt, type the skipped ones' }
+    }
     generation += 1
     void clear($).catch(() => undefined)
     return next(e)
@@ -277,10 +290,7 @@ export const register: Register = (on, options) => {
     const shown = await read($, serve)
     if (shown === null) return next(e)
     const below = await next(e)
-    const elements = $.ui.resolve(e)
-    const { Box, Text, Button } = elements
-    // The mobile app draws no field, so there `other` isn't offered and a question is skipped instead.
-    const Input = 'Input' in elements ? elements.Input : null
+    const { Box, Text, Button } = $.ui.resolve(e)
     const current = currentStep(shown)
     const count = shown.questions.length
     const isMany = count > 1
@@ -297,23 +307,17 @@ export const register: Register = (on, options) => {
           </Box>
           {current !== null && (current.asked.options.length > 0 || isMany) && (
             <Box flexShrink={0} flexWrap="wrap" gap={1}>
-              {shown.isTyping && Input !== null ? (
-                <Input key="serve-other" placeholder="your answer" submitLabel="answer" autoFocus onSubmit={value => void chooseTyped($, value, false)} />
-              ) : (
-                current.asked.options.map((option, index) => (
-                  <Button
-                    key={`serve-${index + 1}`}
-                    hotkey={HOTKEYS[index]}
-                    plain
-                    label={option.label}
-                    onPress={() => void choose($, option.reply, false)}
-                  />
-                ))
-              )}
+              {current.asked.options.map((option, index) => (
+                <Button
+                  key={`serve-${index + 1}`}
+                  hotkey={HOTKEYS[index]}
+                  plain
+                  label={option.label}
+                  onPress={() => void choose($, option.reply, false)}
+                />
+              ))}
               {/* No digit left to spare for these two: they're clicked, or reached with the focus ring. */}
-              {isMany && !shown.isTyping && Input !== null && (
-                <Button key="serve-other" plain dimColor label="other" onPress={() => void startTyping($)} />
-              )}
+              {isMany && (shown.isTyping ? <Text dimColor>type your answer in the prompt</Text> : <Button key="serve-other" plain dimColor label="other" onPress={() => void startTyping($, false)} />)}
               {isMany && <Button key="serve-skip" plain dimColor label="skip" onPress={() => void choose($, null, false)} />}
             </Box>
           )}
@@ -337,15 +341,12 @@ export const register: Register = (on, options) => {
   })
 
   on('ui.render', { component: 'Pane', requestId: PANE }, async ($, e) => {
-    const elements = $.ui.resolve(e)
-    const { Box, Text, Button } = elements
-    const Input = 'Input' in elements ? elements.Input : null
+    const { Box, Text, Button } = $.ui.resolve(e)
     const shown = await read($, serve)
     const waiting = new Set(shown?.questions.map(asked => asked.question))
     const earlier = (await read($, history)).filter(asked => !waiting.has(asked.question))
     const current = shown === null ? null : currentStep(shown)
     const isMany = shown !== null && shown.questions.length > 1
-    const isTyping = shown?.isTyping === true && Input !== null
     const toast = `toast after ${Math.round(toastAfterMs / 1000)}s · voice ${shouldSpeak ? 'on' : 'off'}`
     return (
       <Box flexDirection="column">
@@ -368,28 +369,24 @@ export const register: Register = (on, options) => {
         )}
         {current !== null && (current.asked.options.length > 0 || isMany) && (
           <Box flexDirection="row" gap={1} marginTop={1}>
-            {isTyping && Input !== null ? (
-              <Input key="pane-serve-other" placeholder="your answer" submitLabel="answer" autoFocus onSubmit={value => void chooseTyped($, value, true)} />
-            ) : (
-              current.asked.options.map((option, index) => (
-                <Button
-                  key={`pane-serve-${index + 1}`}
-                  hotkey={HOTKEYS[index]}
-                  plain
-                  label={option.label}
-                  autoFocus={index === 0 ? true : undefined}
-                  onPress={() => void choose($, option.reply, true)}
-                />
-              ))
-            )}
-            {isMany && !isTyping && Input !== null && (
+            {current.asked.options.map((option, index) => (
+              <Button
+                key={`pane-serve-${index + 1}`}
+                hotkey={HOTKEYS[index]}
+                plain
+                label={option.label}
+                autoFocus={index === 0 ? true : undefined}
+                onPress={() => void choose($, option.reply, true)}
+              />
+            ))}
+            {isMany && (
               <Button
                 key="pane-serve-other"
                 plain
                 dimColor
                 label="other"
                 autoFocus={current.asked.options.length === 0 ? true : undefined}
-                onPress={() => void startTyping($)}
+                onPress={() => void startTyping($, true)}
               />
             )}
             {isMany && (

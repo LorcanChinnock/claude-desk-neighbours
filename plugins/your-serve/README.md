@@ -37,12 +37,10 @@ Each answer takes you to the next question. After the last one, they all go to C
 3. Add a retry? Yes, add a retry.
 ```
 
-If none of the answers fit, click `other` and type your own. Enter answers the question with what you typed and
-moves on, the same as pressing an answer. If you skip a question, or press Enter on an empty `other`, it's left
-unanswered, and the replies go into your prompt instead of being sent, so you can type that answer before
-sending. You have to click `other` and
-`skip` (or reach them with Tab) because the digits after 3 belong to the other Desk Neighbours. The mobile app
-can't show a text field, so there you only get `skip`.
+If none of the answers fit, click `other` and type your own in the prompt, as long or as many lines as you like.
+Press Enter and it answers the question and moves on, the same as pressing an answer. If you skip a question,
+the replies go into your prompt instead of being sent, so you can type that answer before sending. You have to
+click `other` and `skip` (or reach them with Tab) because the digits after 3 belong to the other Desk Neighbours.
 
 Nothing gets cut off. If the question and its answers don't fit on one line, the answers wrap onto the next one.
 Only three answers get buttons. For anything else, use `other`, or with a single question just type it in the

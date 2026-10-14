@@ -216,38 +216,70 @@ test('several questions are asked one at a time, and with one skipped the answer
   expect(await ui.find({ type: 'Text', text: /Your serve/ })).toBeUndefined()
 })
 
-test('other swaps the answers for a field, and what is typed answers that question', async ($, on) => {
+const THREE = JSON.stringify({
+  needsInput: true,
+  questions: [
+    { question: 'Keep the old cache or drop it?', options: [{ label: 'Keep', reply: 'Keep the old cache.' }, { label: 'Drop', reply: 'Drop the old cache.' }] },
+    { question: 'What should the new timeout be?', options: [{ label: '30s', reply: 'Make it 30 seconds.' }] },
+    { question: 'Add a retry?', options: [{ label: 'Yes', reply: 'Yes, add a retry.' }] },
+  ],
+})
+const LONG = '  Keep it,\nbut cap it at 1GB.  '
+
+test('other hands the answer to the prompt box: what is sent there answers that question, and the last one sends them all', async ($, on) => {
   const clock = mock.clock(on)
   const box = { text: '' }
-  const verdict = JSON.stringify({
-    needsInput: true,
-    questions: [
-      { question: 'Keep the old cache or drop it?', options: [{ label: 'Keep', reply: 'Keep the old cache.' }, { label: 'Drop', reply: 'Drop the old cache.' }] },
-      { question: 'What should the new timeout be?', options: [{ label: '30s', reply: 'Make it 30 seconds.' }] },
-      { question: 'Add a retry?', options: [{ label: 'Yes', reply: 'Yes, add a retry.' }] },
-    ],
-  })
   on('ui.close', () => ({ value: undefined }))
-  beneath(on, verdict, box)
+  beneath(on, THREE, box)
   await $.turn.complete(turn('1. Should I keep the old cache?\n2. What timeout?\n3. Add a retry?'))
   await clock.settle()
 
   const ui = await $.ui.mount({ plugin: 'your-serve', surface: 'terminal', ...BAND })
-  expect(await ui.find({ type: 'Input' })).toBeUndefined()
-  expect(await ui.find({ type: 'Button', key: 'serve-other' })).toBeDefined()
   await ui.press({ key: 'serve-other' })
-  // The field takes the button's key, so the focus ring on the button lands on it.
-  expect(await ui.find({ type: 'Input', key: 'serve-other' })).toBeDefined()
-  expect((await ui.findAll({ type: 'Button' })).map(b => b.text)).toEqual(['skip'])
-  await ui.input({ key: 'serve-other', text: '  Keep it,\n but cap it at 1GB.  ' })
-  expect(box.text).toBe('')
+  expect(await ui.find({ type: 'Input' })).toBeUndefined()
+  expect(await ui.find({ type: 'Text', text: 'type your answer in the prompt' })).toBeDefined()
+  expect((await ui.findAll({ type: 'Button' })).map(b => b.text)).toEqual(['Keep', 'Drop', 'skip'])
 
-  // The next question starts on its own answers again.
+  // A multiline answer is kept whole, and the next question starts on its own answers again.
+  const first = await $.prompt.submit({ text: LONG, wait: false, origin: { kind: 'composer' } })
+  expect(first).toEqual({ drop: '🎾 Answer 1 of 3 noted' })
   expect(await ui.find({ type: 'Text', text: '🎾 Your serve (2/3): What should the new timeout be?' })).toBeDefined()
-  expect(await ui.find({ type: 'Input' })).toBeUndefined()
-  expect((await ui.findAll({ type: 'Button' })).map(b => b.text)).toEqual(['30s', 'other', 'skip'])
+  expect(await ui.find({ type: 'Text', text: /type your answer/ })).toBeUndefined()
+  await ui.press({ key: 'serve-1' })
   await ui.press({ key: 'serve-other' })
-  await ui.input({ key: 'serve-other', text: '   ' })
+  const last = await $.prompt.submit({ text: 'Only on timeouts.', wait: false, origin: { kind: 'composer' } })
+  await clock.settle()
+  expect(last.text).toBe('1. Keep the old cache or drop it? Keep it,\n   but cap it at 1GB.\n2. What should the new timeout be? Make it 30 seconds.\n3. Add a retry? Only on timeouts.')
+  expect(await ui.find({ type: 'Text', text: /Your serve/ })).toBeUndefined()
+})
+
+test('a skipped question leaves the answers in the prompt to finish instead of sending', async ($, on) => {
+  const clock = mock.clock(on)
+  const box = { text: '' }
+  beneath(on, THREE, box)
+  await $.turn.complete(turn('1. Should I keep the old cache?\n2. What timeout?\n3. Add a retry?'))
+  await clock.settle()
+
+  const ui = await $.ui.mount({ plugin: 'your-serve', surface: 'terminal', ...BAND })
+  await ui.press({ key: 'serve-1' })
+  await ui.press({ key: 'serve-skip' })
+  await ui.press({ key: 'serve-other' })
+  const last = await $.prompt.submit({ text: 'Only on timeouts.', wait: false, origin: { kind: 'composer' } })
+  expect(last).toEqual({ drop: '🎾 Your answers are in your prompt, type the skipped ones' })
+  expect(box.text).toBe('1. Keep the old cache or drop it? Keep the old cache.\n2. What should the new timeout be?\n3. Add a retry? Only on timeouts.')
+  expect(await ui.find({ type: 'Text', text: '🎾 Your serve: all 3 answers are in your prompt' })).toBeDefined()
+})
+
+test('the pane\'s other closes it and waits for the prompt', async ($, on) => {
+  const clock = mock.clock(on)
+  const closed: string[] = []
+  on('ui.close', (_$, e) => {
+    closed.push(e.id)
+    return { value: undefined }
+  })
+  beneath(on, THREE, { text: '' })
+  await $.turn.complete(turn('1. Should I keep the old cache?\n2. What timeout?\n3. Add a retry?'))
+  await clock.settle()
 
   const pane = await $.ui.mount({
     plugin: 'your-serve',
@@ -256,15 +288,11 @@ test('other swaps the answers for a field, and what is typed answers that questi
     requestId: 'your-serve',
     props: { title: 'x', isFocused: true, bodyColumns: 90, placement: 'dock', scroll: { offset: 0, bodyRows: 20 }, view: {} },
   })
-  expect(await pane.find({ type: 'Text', text: '1. Keep the old cache or drop it? Keep it, but cap it at 1GB.' })).toBeDefined()
-  expect(await pane.find({ type: 'Text', text: '2. What should the new timeout be? (skipped, type it in the prompt)' })).toBeDefined()
   await pane.press({ key: 'pane-serve-other' })
-  expect(await pane.find({ type: 'Input', key: 'pane-serve-other' })).toBeDefined()
-  expect(await ui.find({ type: 'Input', key: 'serve-other' })).toBeDefined()
-  await pane.input({ key: 'pane-serve-other', text: 'Only on timeouts.' })
+  expect(closed).toEqual(['your-serve'])
+  const ui = await $.ui.mount({ plugin: 'your-serve', surface: 'terminal', ...BAND })
+  expect(await ui.find({ type: 'Text', text: 'type your answer in the prompt' })).toBeDefined()
   await pane.unmount()
-
-  expect(box.text).toBe('1. Keep the old cache or drop it? Keep it, but cap it at 1GB.\n2. What should the new timeout be?\n3. Add a retry? Only on timeouts.')
 })
 
 test('a long turn also toasts; statements and subagents stay silent', async ($, on) => {

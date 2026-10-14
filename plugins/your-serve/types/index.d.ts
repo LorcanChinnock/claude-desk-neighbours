@@ -7,7 +7,7 @@ export type ServeQuestion = { question: string; options: ServeOption[] }
 /**
  * What a finished turn left for the person: its questions in order, and the replies given so far. The band
  * asks `questions[answers.length]`; a `null` answer was skipped, to be typed in the prompt. `isTyping` is set
- * while the person types their own answer to that question under `other`.
+ * after `other`, while the next prompt they send is taken as their answer to that question.
  */
 export type Serve = { questions: ServeQuestion[]; answers: (string | null)[]; isTyping: boolean }
 
