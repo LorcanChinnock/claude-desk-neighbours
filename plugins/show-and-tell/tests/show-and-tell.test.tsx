@@ -154,8 +154,38 @@ test('a paste shows as a thumbnail the moment it lands, taken from Claude Code\'
   await w.clock.advance(250)
   expect(w.ran.filter(argv => argv[0] === 'cp')).toHaveLength(1)
 
-  // Sending it takes the paste's thumbnail down.
+  // Waiting in the draft, it does not time out.
+  await w.clock.advance(30_000)
+  expect(await band.find({ type: 'Image' })).toBeDefined()
+
+  // Sent, the draft empties and its time starts then.
   await $.prompt.submit({ text: '[Image #1] what is this?', wait: false, origin: { kind: 'composer' } })
+  w.box.text = ''
+  await w.clock.advance(250)
+  expect(await band.find({ type: 'Image' })).toBeDefined()
+  await w.clock.advance(19_750)
+  expect(await band.find({ type: 'Image' })).toBeUndefined()
+})
+
+test('a paste whose prompt is abandoned goes at once; the rest of the band stays', async ($, on) => {
+  const w = world(on)
+  w.files.set(`${CACHE}/1.png`, { base64: PNG, mtimeMs: 1_000 })
+  w.files.set(`${CACHE}/2.png`, { base64: PNG, mtimeMs: 1_000 })
+  await start($)
+  w.box.text = '[Image #1] [Image #2]'
+  await w.clock.advance(250)
+  const band = await $.ui.mount({ plugin: 'show-and-tell', surface: 'terminal', ...BAND })
+  expect(await band.findAll({ type: 'Image' })).toHaveLength(2)
+
+  // One taken out of the draft goes; the other stays.
+  w.box.text = '[Image #2]'
+  await w.clock.advance(250)
+  expect(await band.find({ type: 'Text', text: /Pasted image #1/ })).toBeUndefined()
+  expect(await band.find({ type: 'Text', text: /Pasted image #2/ })).toBeDefined()
+
+  // The draft cleared without sending takes the last one down too.
+  w.box.text = ''
+  await w.clock.advance(250)
   expect(await band.find({ type: 'Image' })).toBeUndefined()
 })
 
@@ -180,6 +210,7 @@ test('the band says it in words on a surface with no pictures, and goes after it
   const band = await $.ui.mount({ plugin: 'show-and-tell', surface: 'desktop', ...BAND })
   expect(await band.find({ type: 'Text', text: '📸 📎 Pasted image #1 · 200×120' })).toBeDefined()
   expect(await band.find({ key: 'band-gallery' })).toBeDefined()
+  await $.prompt.submit({ text: '[Image #1]', wait: false, origin: { kind: 'composer' } })
   await w.clock.advance(20_000)
   expect(await band.find({ key: 'band-gallery' })).toBeUndefined()
 })
