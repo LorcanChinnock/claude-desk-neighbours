@@ -11,7 +11,7 @@
     "bandSeconds": {
       "type": "number",
       "title": "Thumbnail band (seconds)",
-      "description": "How long new thumbnails stay above the prompt. A paste's thumbnail also goes when you send it.",
+      "description": "How long new thumbnails stay above the prompt. A paste's thumbnail waits while it is in your draft and counts from when you send it.",
       "default": 20
     }
   },

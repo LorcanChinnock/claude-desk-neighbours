@@ -20,8 +20,9 @@ Claude's pictures get picked up the same way. That covers images Claude opens wi
 browser or MCP tools, pictures Claude writes or edits, and images a shell command creates in the working
 directory or one level down (`playwright screenshot`, a chart script).
 
-The band above the prompt shows the newest thumbnails, with Gallery and Dismiss buttons. A pasted thumbnail goes
-away when you send it. Everything else disappears after 20 seconds, which you can change in `/config`.
+The band above the prompt shows the newest thumbnails, with Gallery and Dismiss buttons. A pasted thumbnail stays
+for as long as it's in your draft. If you delete it or clear the draft, it goes straight away. Once you send it,
+it goes 20 seconds later, the same as everything else. You can change that time in `/config`.
 
 ## The gallery
 

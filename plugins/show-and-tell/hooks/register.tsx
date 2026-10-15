@@ -269,7 +269,13 @@ async function addShot($: EngineInterface, shot: Shot, isFresh: boolean): Promis
   await saveManifest($)
   if (!isFresh) return
   await update($, fresh, ids => [shot.id, ...ids.filter(id => id !== shot.id)].slice(0, 8))
-  $.clock.after(bandMs, () => void update($, fresh, ids => ids.filter(id => id !== shot.id)).catch(() => undefined))
+  // A paste still in the draft stays up; its time starts when the prompt is sent.
+  if (shot.source !== 'you' || shot.isSent === true) expire($, shot.id)
+}
+
+/** Takes a thumbnail off the band once its time is up. */
+function expire($: EngineInterface, id: string): void {
+  $.clock.after(bandMs, () => void update($, fresh, ids => ids.filter(f => f !== id)).catch(() => undefined))
 }
 
 /** Takes a paste the moment its `[Image #N]` shows in the draft. */
@@ -352,6 +358,9 @@ async function prune($: EngineInterface): Promise<void> {
 
 let seen: number[] = []
 let isPolling = false
+// Image numbers sent with a prompt that the draft has not yet been seen to drop; their leaving is
+// the send, not the draft being abandoned.
+let submitted: number[] = []
 // The image numbers of the prompt being sent, matched in order to the image blocks it is stored with.
 let sending: number[] = []
 
@@ -361,7 +370,11 @@ async function poll($: EngineInterface): Promise<void> {
   try {
     const now = imageNumbers((await $.prompt.read()).text)
     const added = now.filter(n => !seen.includes(n))
+    const gone = seen.filter(n => !now.includes(n))
+    const abandoned = gone.filter(n => !submitted.includes(n))
+    submitted = submitted.filter(n => !gone.includes(n))
     seen = now
+    if (abandoned.length > 0) await dropPastes($, abandoned)
     for (const n of added) await capturePaste($, n)
   } finally {
     isPolling = false
@@ -391,13 +404,29 @@ async function insertPath($: EngineInterface, path: string): Promise<void> {
   await $.prompt.fill({ text: `@${path} `, mode: 'insert' })
 }
 
-async function dropPastes($: EngineInterface): Promise<void> {
+/** The unsent pastes on the band with these image numbers. */
+async function pastesOf($: EngineInterface, numbers: readonly number[]): Promise<string[]> {
   const list = await read($, shots)
-  await update($, fresh, ids => ids.filter(id => list.find(s => s.id === id)?.source !== 'you'))
+  const ids = await read($, fresh)
+  return list
+    .filter(s => ids.includes(s.id) && s.source === 'you' && s.isSent !== true && s.imageNo !== undefined && numbers.includes(s.imageNo))
+    .map(s => s.id)
+}
+
+/** A paste taken out of the draft, or the draft cleared, takes its thumbnail down at once. */
+async function dropPastes($: EngineInterface, numbers: readonly number[]): Promise<void> {
+  const gone = await pastesOf($, numbers)
+  await update($, fresh, ids => ids.filter(id => !gone.includes(id)))
+}
+
+/** A sent paste's thumbnail stays its usual time from now. */
+async function expirePastes($: EngineInterface, numbers: readonly number[]): Promise<void> {
+  for (const id of await pastesOf($, numbers)) expire($, id)
 }
 
 async function reset($: EngineInterface): Promise<void> {
   seen = []
+  submitted = []
   await $.state.set(SHOTS, [])
   await $.state.set(FRESH, [])
   await $.state.set(PICKED, null)
@@ -472,7 +501,8 @@ export const register: Register = (on, options) => {
 
   on('prompt.submit', ($, e, next) => {
     sending = imageNumbers(e.text)
-    void dropPastes($).catch(() => undefined)
+    submitted = [...submitted, ...sending]
+    void expirePastes($, sending).catch(() => undefined)
     return next(e)
   })
 
