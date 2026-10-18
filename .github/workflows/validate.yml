@@ -1,18 +1,33 @@
 name: validate
 
+# Every pull request validates the marketplace and runs each plugin's tests. There's no run on push to main: PRs are
+# squash-merged, and their merge commit was already tested. release-please opens its PR as the repository's GitHub App
+# (release-please.yml), so that PR's runs start without approval.
 on:
-  push:
-    branches: [main]
   pull_request:
 
+permissions:
+  contents: read
+
+concurrency:
+  group: validate-${{ github.ref }}
+  cancel-in-progress: true
+
 jobs:
+  # A required check, so main's ruleset needs it by name.
   validate:
     runs-on: ubuntu-latest
+    # A run takes a couple of minutes. A hung test would otherwise hold a runner for GitHub's 6-hour default.
+    timeout-minutes: 15
     steps:
-      - uses: actions/checkout@v5
-      - uses: actions/setup-node@v5
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+      - uses: actions/setup-node@949feb2413d6458794dcd2491c4babbbce0c15c1 # v7.1.0
         with:
           node-version: 22
+      # The latest release, on purpose: the plugins are built against the newest engine, and validate checks them the
+      # way that engine will load them.
       - run: npm install -g @anthropic-ai/claude-code
       - name: Validate the marketplace and every plugin
         run: claude plugin validate . --strict

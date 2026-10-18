@@ -17,7 +17,15 @@ jobs:
       (github.event_name == 'pull_request_review_comment' && contains(github.event.comment.body, '@claude')) ||
       (github.event_name == 'pull_request_review' && contains(github.event.review.body, '@claude')) ||
       (github.event_name == 'issues' && (contains(github.event.issue.body, '@claude') || contains(github.event.issue.title, '@claude')))
+    # One run at a time per issue or PR, and set on the job so only runs that pass the `if:` join it. A newer mention
+    # waits rather than cancelling one that's working, but GitHub keeps one waiting run per group, so a third mention
+    # replaces the second.
+    concurrency:
+      group: claude-${{ github.event.issue.number || github.event.pull_request.number }}
+      cancel-in-progress: false
     runs-on: ubuntu-latest
+    # A stuck run would otherwise hold a runner for GitHub's 6-hour default.
+    timeout-minutes: 60
     permissions:
       contents: read
       pull-requests: read
@@ -26,13 +34,13 @@ jobs:
       actions: read # Required for Claude to read CI results on PRs
     steps:
       - name: Checkout repository
-        uses: actions/checkout@v4
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
         with:
           fetch-depth: 1
 
       - name: Run Claude Code
         id: claude
-        uses: anthropics/claude-code-action@v1
+        uses: anthropics/claude-code-action@1d6de8cb0c237e7c15e9e1bdf973826ebae490cc # v1
         with:
           claude_code_oauth_token: ${{ secrets.CLAUDE_CODE_OAUTH_TOKEN }}
 
