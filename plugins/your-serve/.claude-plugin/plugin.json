@@ -1,6 +1,6 @@
 {
   "name": "your-serve",
-  "version": "2.0.0",
+  "version": "2.1.0",
   "description": "🎾 A button that has Claude ask you what it needs, one question at a time, in its own question picker.",
   "author": {
     "name": "Lorcan Chinnock",
