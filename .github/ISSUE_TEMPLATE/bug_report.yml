@@ -1,0 +1,44 @@
+name: Bug report
+description: Something in a Desk Neighbours plugin doesn't work as expected
+labels: [bug]
+body:
+  - type: dropdown
+    id: plugin
+    attributes:
+      label: Which plugin?
+      options:
+        - Grudge
+        - Your Serve
+        - Previously On
+        - Show & Tell
+        - Closing Time
+        - Name Tag
+    validations:
+      required: true
+  - type: textarea
+    id: what
+    attributes:
+      label: What happened?
+      description: What you did, what you expected, and what happened instead.
+    validations:
+      required: true
+  - type: input
+    id: versions
+    attributes:
+      label: Plugin and Claude Code versions
+      description: The plugin's version from `/plugin`, and `claude --version`.
+      placeholder: your-serve 2.0.0, Claude Code 2.1.302
+    validations:
+      required: true
+  - type: input
+    id: terminal
+    attributes:
+      label: Terminal and OS
+      placeholder: Ghostty on macOS 26.1
+  - type: textarea
+    id: logs
+    attributes:
+      label: Logs
+      description: |
+        Start Claude Code with `claude --debug`, reproduce the problem, and paste the lines that name the plugin.
+      render: text

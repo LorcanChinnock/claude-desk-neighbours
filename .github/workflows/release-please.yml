@@ -2,22 +2,38 @@ name: release-please
 
 # Keeps a release PR open that bumps every plugin's version and the changelog from the
 # conventional PR titles merged since the last release. Merging it tags the release.
+# release-please acts as the repository's GitHub App, not GITHUB_TOKEN: GitHub holds the workflows on a pull request
+# from github-actions[bot] until someone approves them, and its required checks never start. An admin merges the
+# release PR by hand. The repository has auto-merge turned off.
 on:
   push:
     branches: [main]
 
-permissions:
-  contents: write
-  pull-requests: write
-  issues: write
+# release-please writes with the app's token, so GITHUB_TOKEN needs nothing.
+permissions: {}
+
+# Two quick merges to main would otherwise run release-please twice at once. A run that's waiting is replaced by a
+# newer one, which is fine: release-please reads main as it is, and tags any merged release PR it finds untagged.
+concurrency:
+  group: release
+  cancel-in-progress: false
 
 jobs:
   release-please:
     runs-on: ubuntu-latest
+    timeout-minutes: 10
     steps:
-      # A release PR opened with the default GITHUB_TOKEN gets no CI: its validate and pr-title
-      # runs fail with no jobs. A fine-grained token for this repo (Contents, Pull requests and
-      # Issues: read and write) lets them run; without the secret it falls back to GITHUB_TOKEN.
-      - uses: googleapis/release-please-action@v5
+      # See CONTRIBUTING.md › Release secrets. The token lasts only for this job.
+      - uses: actions/create-github-app-token@bcd2ba49218906704ab6c1aa796996da409d3eb1 # v3.2.0
+        id: app-token
         with:
-          token: ${{ secrets.RELEASE_PLEASE_TOKEN || github.token }}
+          client-id: ${{ vars.RELEASE_APP_CLIENT_ID }}
+          private-key: ${{ secrets.RELEASE_APP_PRIVATE_KEY }}
+          permission-contents: write
+          permission-pull-requests: write
+          permission-issues: write
+      - uses: googleapis/release-please-action@45996ed1f6d02564a971a2fa1b5860e934307cf7 # v5
+        with:
+          token: ${{ steps.app-token.outputs.token }}
+          config-file: release-please-config.json
+          manifest-file: .release-please-manifest.json
