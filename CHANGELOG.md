@@ -1,5 +1,12 @@
 # Changelog
 
+## [2.1.0](https://github.com/LorcanChinnock/claude-desk-neighbours/compare/v2.0.0...v2.1.0) (2026-10-18)
+
+
+### Features
+
+* Add Claude Code GitHub Workflow ([#39](https://github.com/LorcanChinnock/claude-desk-neighbours/issues/39)) ([896398d](https://github.com/LorcanChinnock/claude-desk-neighbours/commit/896398dedb45e181dec744a6d74e7cfb7eab8e30))
+
 ## [2.0.0](https://github.com/LorcanChinnock/claude-desk-neighbours/compare/v1.0.1...v2.0.0) (2026-10-18)
 
 
