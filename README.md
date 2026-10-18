@@ -59,17 +59,12 @@ than one:
 
 ## 🎾 Your Serve
 
-**Lets you know when Claude is waiting on you, so you don't miss the question at the bottom of a long answer.**
+**A button that has Claude ask you what it needs, so you don't miss the question at the bottom of a long answer.**
 
-![Claude ends a long answer with a question; Your Serve puts it above the prompt with its answers, and 1 sends the reply straight to Claude](docs/screenshots/your-serve.gif)
-
-- When a turn ends by asking you something, Haiku pulls out what you need to answer and up to three possible
-  answers. Each answer is labelled with the choice itself ("Add 30s cap"), not "Option 2".
-- Pressing `1`, `2` or `3` sends Claude a natural-sounding reply, so there's no Enter to press after. If you've
-  already started typing, the reply goes on the end of your draft instead, for you to finish and send.
-- If the turn took more than a minute you also get a toast, and on macOS it can say "Claude needs a decision" out
-  loud.
-- It ignores plain statements and subagent turns, so it only speaks up when it's actually your move.
+- Click `🎾 your serve` in the status row, or run `/your-serve`, and Claude asks each open question in its own
+  question picker, one at a time, with the options it would suggest.
+- If nothing is waiting on you, Claude says so in one line.
+- Press it whenever you like. If Claude is still working, the request waits until the turn is over.
 
 [Everything Your Serve does →](plugins/your-serve)
 
@@ -141,24 +136,24 @@ than one:
 
 There's a status row under the prompt with one item for each neighbour you've installed, always in the same
 order. Click an item, or run its command, to open its pane. Open a few and they turn into tabs. Esc closes a pane.
+Your Serve's item is the exception: it has Claude ask its questions instead of opening a pane.
 
 ```
-? for shortcuts   😤 3 grudges  🎾 ready  📺 on air  📸 4  🔔 #42 CI 3/5 · reviews 1/2
+? for shortcuts   😤 3 grudges  🎾 your serve  📺 on air  📸 4  🔔 #42 CI 3/5 · reviews 1/2
 ```
 
-When a neighbour has something to tell you, it gets a line in the band above the prompt. Your Serve always goes
-on top, and long lines wrap instead of getting cut off:
+When a neighbour has something to tell you, it gets a line in the band above the prompt. Long lines wrap instead
+of getting cut off:
 
 ![Claude Code with five of the neighbours: a Your Serve question and a Previously On recap in the band, the status row below](docs/screenshots/previously-recap.png)
 
-Buttons that write a prompt for you (Your Serve's answers) send it straight away. If you've already started
-typing, the text goes on the end of your draft instead, so you can finish it and send it yourself. To press one, type its digit into an empty prompt or click it. If there's already text in the prompt, press
-`ctrl+x tab` first. Each neighbour has its own digits, so they never clash. Show & Tell's and Closing Time's band
-buttons don't have digits, so either click them or open their pane and use its letter keys:
+To press a band button, type its digit into an empty prompt or click it. If there's already text in the prompt,
+press `ctrl+x tab` first. Each neighbour has its own digits, so they never clash. Show & Tell's and Closing Time's
+band buttons don't have digits, so either click them or open their pane and use its letter keys:
 
-| Your Serve | Grudge | Previously On |
-|---|---|---|
-| `1` `2` `3` | `4` `5` | `0` |
+| Grudge | Previously On |
+|---|---|
+| `4` `5` | `0` |
 
 The band clears when you send your next prompt.
 
@@ -168,8 +163,6 @@ You can change these in `/config`, or with `/plugin configure <plugin>@claude-de
 
 | Plugin | Setting | Default |
 |---|---|---|
-| `your-serve` | Toast when a turn that needs you took longer than (seconds) | 60 |
-| `your-serve` | Also say "Claude needs a decision" out loud (macOS) | off |
 | `previously-on` | Recap after this many idle minutes | 20 |
 | `show-and-tell` | Keep new thumbnails above the prompt for (seconds) | 20 |
 | `closing-time` | Watch any PR Claude raises, not only ones from `/ship` | on |
@@ -184,9 +177,10 @@ You can change these in `/config`, or with `/plugin configure <plugin>@claude-de
 
 Here's what goes on behind the scenes, so you know before you install:
 
-- **Model calls on your account.** Grudge, Your Serve and Previously On send short questions to a small model
-  (Haiku): is this a lasting correction, what is Claude asking, what was this session about. Each call only
-  happens after a cheap local check passes, so most turns don't make any.
+- **Model calls on your account.** Grudge and Previously On send short questions to a small model (Haiku): is
+  this a lasting correction, what was this session about. Each call only happens after a cheap local check
+  passes, so most turns don't make any. Your Serve makes no calls of its own: each press starts a normal turn on
+  your session's model.
   Previously On's recap re-reads the session transcript once each time you come back, mostly from the prompt
   cache. Closing Time asks Haiku whether a failed CI log looks like a flake, and starts one read-only triage
   subagent on your session's model for each bot review comment.

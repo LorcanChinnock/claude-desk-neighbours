@@ -1,25 +1,10 @@
 {
   "name": "your-serve",
   "version": "1.0.1",
-  "description": "🎾 Tells you when Claude needs you: one line with the question it ended on, and its answers as buttons.",
+  "description": "🎾 A button that has Claude ask you what it needs, one question at a time, in its own question picker.",
   "author": {
     "name": "Lorcan Chinnock",
     "url": "https://github.com/LorcanChinnock"
-  },
-  "types": "./types/index.d.ts",
-  "userConfig": {
-    "toastAfterSeconds": {
-      "type": "number",
-      "title": "Toast after (seconds)",
-      "description": "Also show a toast when a turn that needs you took longer than this.",
-      "default": 60
-    },
-    "speak": {
-      "type": "boolean",
-      "title": "Say it out loud",
-      "description": "Speak \"Claude needs a decision\" along with the toast.",
-      "default": false
-    }
   },
   "homepage": "https://github.com/LorcanChinnock/claude-desk-neighbours/tree/main/plugins/your-serve",
   "repository": "https://github.com/LorcanChinnock/claude-desk-neighbours",
