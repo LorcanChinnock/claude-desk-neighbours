@@ -17,7 +17,7 @@
     {
       "name": "your-serve",
       "source": "your-serve",
-      "description": "🎾 Tells you when Claude needs you: one line with the question it ended on, and its answers as buttons."
+      "description": "🎾 A button that has Claude ask you what it needs, one question at a time, in its own question picker."
     },
     {
       "name": "previously-on",
