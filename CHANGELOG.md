@@ -1,5 +1,20 @@
 # Changelog
 
+## [2.0.0](https://github.com/LorcanChinnock/claude-desk-neighbours/compare/v1.0.1...v2.0.0) (2026-10-18)
+
+
+### ⚠ BREAKING CHANGES
+
+* **your-serve:** Your Serve no longer reads finished turns or shows a band. The `toastAfterSeconds` and `speak` settings are gone, and the digits 1 to 3 no longer answer anything.
+
+### Features
+
+* **name-tag:** name an untitled session after a few prompts ([#32](https://github.com/LorcanChinnock/claude-desk-neighbours/issues/32)) ([b684786](https://github.com/LorcanChinnock/claude-desk-neighbours/commit/b6847863c3708bad24726ca464b1a8d80e9d2698))
+* **name-tag:** show a passive status item while naming ([#34](https://github.com/LorcanChinnock/claude-desk-neighbours/issues/34)) ([f3d6dbf](https://github.com/LorcanChinnock/claude-desk-neighbours/commit/f3d6dbf4c68e04588fa6f35c0037b2829eb91463))
+* **show-and-tell:** keep a paste's thumbnail while it is in the draft ([#36](https://github.com/LorcanChinnock/claude-desk-neighbours/issues/36)) ([a30cae2](https://github.com/LorcanChinnock/claude-desk-neighbours/commit/a30cae2591edc7574018119c0af362db1bd4888e))
+* **your-serve:** answer other in the prompt box ([#35](https://github.com/LorcanChinnock/claude-desk-neighbours/issues/35)) ([ef8532d](https://github.com/LorcanChinnock/claude-desk-neighbours/commit/ef8532da627f666304ddd87a030a1b6ce68a249c))
+* **your-serve:** turn Your Serve into a button that has Claude ask its questions ([#37](https://github.com/LorcanChinnock/claude-desk-neighbours/issues/37)) ([c6cfe70](https://github.com/LorcanChinnock/claude-desk-neighbours/commit/c6cfe70cbba8612c6a5bbb866c49c7a1f68e6b13))
+
 ## [1.0.1](https://github.com/LorcanChinnock/claude-desk-neighbours/compare/v1.0.0...v1.0.1) (2026-10-05)
 
 
