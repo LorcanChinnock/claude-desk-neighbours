@@ -1,6 +1,6 @@
 {
   "name": "show-and-tell",
-  "version": "3.0.0",
+  "version": "3.1.0",
   "description": "📸 Shows you the pictures: a thumbnail the moment you paste one, and /gallery of every image you and Claude passed around this session.",
   "author": {
     "name": "Lorcan Chinnock",

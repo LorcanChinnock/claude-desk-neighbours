@@ -1,5 +1,12 @@
 # Changelog
 
+## [3.1.0](https://github.com/LorcanChinnock/claude-desk-neighbours/compare/v3.0.0...v3.1.0) (2026-10-19)
+
+
+### Features
+
+* **whats-next:** find the next task from GitHub in a blank session ([#53](https://github.com/LorcanChinnock/claude-desk-neighbours/issues/53)) ([fbfba19](https://github.com/LorcanChinnock/claude-desk-neighbours/commit/fbfba19901753391df1514fe3fe2db6275b0d211))
+
 ## [3.0.0](https://github.com/LorcanChinnock/claude-desk-neighbours/compare/v2.1.0...v3.0.0) (2026-10-19)
 
 
