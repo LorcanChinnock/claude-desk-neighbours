@@ -63,12 +63,11 @@ Then install whichever ones you want. They each work on their own, and play nice
 
 ## How they work together
 
-There's a status row under the prompt with one item for each neighbour you've installed, always in the same
-order. Click `📸 4`, or run `/gallery`, to open Show & Tell's pane; Esc closes it. Your Serve's item has Claude ask
-its questions instead of opening a pane.
+Your Serve adds an item to the status row under the prompt. Click it and Claude asks its questions. Show & Tell
+has no status-row item: run `/gallery`, or click `Gallery` in its band, to open its pane; Esc closes it.
 
 ```
-? for shortcuts   🎾 your serve  📸 4
+? for shortcuts   🎾 your serve
 ```
 
 When a neighbour has something to tell you, it gets a line in the band above the prompt. Long lines wrap instead

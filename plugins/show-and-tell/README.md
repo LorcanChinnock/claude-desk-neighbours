@@ -26,7 +26,7 @@ it goes 20 seconds later, the same as everything else. You can change that time 
 
 ## The gallery
 
-Click `📸 4` in the status row, or run `/gallery`, to see every image from this session, newest first, with a big
+Run `/gallery`, or click the band's `Gallery` button, to see every image from this session, newest first, with a big
 preview of whichever one you select. `a`, `y` and `c` filter to all images, yours, or Claude's. `o` opens the
 image in your viewer, `i` puts `@path` in your prompt so Claude can look at it again, `p` copies the path, and
 `f` shows it in its folder. Tab moves through the list. This is after Claude fixed the checkout and took a
