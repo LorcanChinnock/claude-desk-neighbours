@@ -25,41 +25,45 @@
   .dots i:nth-child(2) { background: #febc2e; }
   .dots i:nth-child(3) { background: #28c840; }
   .kicker {
-    position: absolute; left: 98px; top: 108px;
+    position: absolute; left: 98px; top: 150px;
     font: 700 22px/1 'JetBrains Mono', monospace; letter-spacing: 0.425em; color: #d97757; white-space: nowrap;
   }
   h1 {
-    position: absolute; left: 94px; top: 177px; margin: 0;
-    font: 700 125px/1.1 'Space Grotesk', sans-serif; letter-spacing: -0.02em; color: #fbf3ef;
+    position: absolute; left: 92px; top: 216px; margin: 0;
+    font: 700 150px/1.02 'Space Grotesk', sans-serif; letter-spacing: -0.03em; color: #fbf3ef;
   }
   .sub {
-    position: absolute; left: 98px; top: 369px; margin: 0;
+    position: absolute; left: 98px; top: 584px; margin: 0; width: 900px;
     font: 500 37px/54px 'Space Grotesk', sans-serif; color: #cdc8d6;
   }
-  .cards { position: absolute; left: 98px; top: 556px; width: 1822px; display: flex; gap: 24px; }
-  .card {
-    flex: 1; height: 222px; box-sizing: border-box; border-radius: 20px;
-    background: #211f2a; border: 2px solid #35333d;
-    display: flex; flex-direction: column; align-items: center; justify-content: flex-start; padding-top: 22px; text-align: center;
-  }
-  .glyph { font-size: 62px; line-height: 1; margin-bottom: 38px; }
-  .name { font: 700 30px/1 'JetBrains Mono', monospace; color: #f4f1f8; }
-  .tag { font: 400 24px/1 'JetBrains Mono', monospace; letter-spacing: 0.08em; color: #8a8794; margin-top: 18px; }
   .rule { position: absolute; left: 98px; top: 833px; width: 1822px; height: 2px; background: #303037; }
   .prompt { position: absolute; left: 104px; top: 872px; font: 400 32px/1 'JetBrains Mono', monospace; color: #ece8f2; white-space: nowrap; display: flex; align-items: center; }
   .prompt b { color: #d97757; font-weight: 700; margin-right: 10px; }
   .prompt u { display: inline-block; width: 17px; height: 34px; background: #f4f1f8; margin-left: 4px; text-decoration: none; }
+
+  /* The mark: Claude Code's prompt box, with a neighbour's light on in the row beneath it. */
+  .mark { position: absolute; left: 1180px; top: 270px; width: 680px; }
+  .box {
+    height: 150px; box-sizing: border-box; border-radius: 28px; border: 3px solid #4a4656; background: #1d1b25;
+    display: flex; align-items: center; padding-left: 44px;
+    box-shadow: 0 30px 80px rgba(0, 0, 0, 0.35);
+  }
+  .box b { font: 700 64px/1 'JetBrains Mono', monospace; color: #d97757; margin-right: 22px; }
+  .box u { display: inline-block; width: 34px; height: 68px; background: #f4f1f8; text-decoration: none; }
+  .row { display: flex; align-items: center; gap: 26px; margin: 30px 0 0 30px; font: 400 28px/1 'JetBrains Mono', monospace; color: #6f6b7a; }
+  .row .seat { width: 120px; height: 14px; border-radius: 7px; background: #35333d; }
+  .row .seat.on { background: #d97757; box-shadow: 0 0 28px rgba(217, 119, 87, 0.75); }
 </style>
 </head>
 <body>
 <div class="window">
   <div class="dots"><i></i><i></i><i></i></div>
   <div class="kicker">CLAUDE-DESK-NEIGHBOURS · FOR CLAUDE CODE</div>
-  <h1>Desk Neighbours</h1>
-  <p class="sub">Two small colleagues that sit around your terminal. One glyph,<br>one job each. Most turns they say nothing at all.</p>
-  <div class="cards">
-    <div class="card"><div class="glyph">🎾</div><div class="name">your-serve</div><div class="tag">nudges you</div></div>
-    <div class="card"><div class="glyph">📸</div><div class="name">show-and-tell</div><div class="tag">shows you</div></div>
+  <h1>Desk<br>Neighbours</h1>
+  <p class="sub">Small colleagues that sit around your terminal. One job each. Most turns they say nothing at all.</p>
+  <div class="mark">
+    <div class="box"><b>❯</b><u></u></div>
+    <div class="row"><span>? for shortcuts</span><i class="seat on"></i><i class="seat"></i></div>
   </div>
   <div class="rule"></div>
   <div class="prompt"><b>❯</b>/plugin marketplace add LorcanChinnock/claude-desk-neighbours<u></u></div>

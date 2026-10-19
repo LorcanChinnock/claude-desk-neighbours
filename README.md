@@ -1,5 +1,5 @@
 <p align="center">
-  <img src="docs/logo.png" width="760" alt="Desk Neighbours: two small colleagues for your Claude Code terminal. Your Serve nudges you, Show & Tell shows you.">
+  <img src="docs/logo.png" width="760" alt="Desk Neighbours: small colleagues that sit around your Claude Code terminal, drawn as a prompt box with a neighbour's light on in the status row beneath it.">
 </p>
 
 <p align="center">
