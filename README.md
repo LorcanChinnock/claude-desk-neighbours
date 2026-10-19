@@ -1,5 +1,5 @@
 <p align="center">
-  <img src="docs/logo.png" width="760" alt="Desk Neighbours: six small colleagues for your Claude Code terminal. Grudge remembers, Your Serve nudges you, Previously On catches you up, Show & Tell shows you, Closing Time closes the PR, Name Tag names your session.">
+  <img src="docs/logo.png" width="760" alt="Desk Neighbours: two small colleagues for your Claude Code terminal. Your Serve nudges you, Show & Tell shows you.">
 </p>
 
 <p align="center">
@@ -9,53 +9,27 @@
 </p>
 
 <p align="center">
-  <a href="#-grudge">😤 Grudge</a> ·
   <a href="#-your-serve">🎾 Your Serve</a> ·
-  <a href="#-previously-on">📺 Previously On</a> ·
-  <a href="#-show--tell">📸 Show & Tell</a> ·
-  <a href="#-closing-time">🔔 Closing Time</a>
+  <a href="#-show--tell">📸 Show & Tell</a>
 </p>
 
-Claude Code does the actual work well. It's the stuff around the work that slips. You correct it and it's
-forgotten by the next session. It asks you something in the last line of a long reply. It has no way to catch
-you up when you come back from lunch. **Desk Neighbours** are six small mods for that kind of thing. They sit in a
-status row under your prompt and only pipe up, in a single line above it, when there's something worth saying.
+Claude Code does the actual work well. It's the stuff around the work that slips. It asks you something in the
+last line of a long reply. The screenshot you pasted three prompts ago is just `[Image #1]`. **Desk Neighbours**
+are two small mods for that kind of thing. They sit in a status row under your prompt and only pipe up, in a
+single line above it, when there's something worth saying.
 
 ```
 /plugin marketplace add LorcanChinnock/claude-desk-neighbours
 ```
 
-Then install whichever ones you want. They all work on their own, and they play nicely together if you have more
-than one:
+Then install whichever ones you want. They each work on their own, and play nicely together if you have both:
 
 ```
-/plugin install grudge@claude-desk-neighbours
 /plugin install your-serve@claude-desk-neighbours
-/plugin install previously-on@claude-desk-neighbours
 /plugin install show-and-tell@claude-desk-neighbours
-/plugin install closing-time@claude-desk-neighbours
-/plugin install name-tag@claude-desk-neighbours
 ```
 
 ---
-
-## 😤 Grudge
-
-**Remembers your corrections, so you only have to say "no, use pnpm" once.**
-
-![Saying "no, use pnpm, not npm": Grudge offers to hold it while Claude works, and 4 holds it](docs/screenshots/grudge.gif)
-
-- Short prompts that look like corrections go to Haiku, which decides whether you've stated a lasting preference
-  ("use pnpm, not npm") or a one-off ("that's the wrong file"). You only get offered the lasting ones, and nothing
-  is saved unless you press Hold.
-- Held rules get sent with every request in that repo, so Claude already knows them when a session starts.
-  Personal style, like British spelling, applies in every repo.
-- If a rule is a straight command swap (`npm` → `pnpm`, `python` → `python3` and a few others), Grudge rewrites
-  the command before it runs and leaves a note under the tool call: `😤 grudge #1: npm → pnpm`. It only does this
-  where the arguments mean the same thing for both commands.
-- `/grudges` shows what it's holding, how many times each rule has been enforced, and a Forgive button.
-
-[Everything Grudge does →](plugins/grudge)
 
 ## 🎾 Your Serve
 
@@ -67,21 +41,6 @@ than one:
 - Press it whenever you like. If Claude is still working, the request waits until the turn is over.
 
 [Everything Your Serve does →](plugins/your-serve)
-
-## 📺 Previously On
-
-**Catches you up when you come back.**
-
-![After 20 minutes away, the first keystroke brings up a recap of the session; 0 dismisses it](docs/screenshots/previously-on.gif)
-
-- After 20 minutes idle, your first keystroke brings up a short "Previously on…" recap of what's waiting on you,
-  what's done and what's still pending. It's generated once each time you come back, and reused if nothing has
-  changed.
-- The first session of your day shows what you worked on last time, across all your repos.
-- `/standup` prints yesterday's and today's sessions so you can paste them straight into your standup channel.
-- It keeps one short line per session, for two weeks.
-
-[Everything Previously On does →](plugins/previously-on)
 
 ## 📸 Show & Tell
 
@@ -100,62 +59,21 @@ than one:
 
 [Everything Show & Tell does →](plugins/show-and-tell)
 
-## 🔔 Closing Time
-
-**Watches a PR until CI passes and the agent reviewers are happy, and pushes back on review comments that are wrong.**
-
-![/ship raises the PR; CI fails and Claude fixes it; a bot leaves three comments; triage accepts one and declines two; the replies are posted and the PR goes green](docs/screenshots/closing-time.gif)
-
-- `/ship` gets Claude to raise the PR, and Closing Time watches it from then on. It picks up any other PR Claude
-  raises with `gh pr create` too, and `/closing-time watch 123` watches one that already exists.
-- When CI fails, Claude gets the failing checks and the end of their logs once they've all finished, and is told to
-  fix the cause rather than weaken the check. A job whose log looks like a flake is rerun once instead.
-- Each bot review comment goes to a read-only triage agent first. It checks the claim against the code and
-  accepts, declines or hands it to you, with evidence. Claude only gets the accepted ones, and comment text always
-  reaches it as quoted data.
-- Replies to declined and fixed comments are drafted, and none are posted until you press Post. It hands over to
-  you after 2 failed fixes on one check or 3 rounds of review fixes, and it never merges.
-
-[Everything Closing Time does →](plugins/closing-time)
-
-## 🏷️ Name Tag
-
-**Names your session after a few prompts, so you can tell your sessions apart when you resume one.**
-
-- Once you've sent 3 prompts, Haiku reads your first few messages and writes a title of 3 to 6 words. It's set on your
-  next prompt.
-- It names a session once, and leaves alone any session you've already named with `/rename`.
-- A small item in the status row counts your prompts (`🏷️ 1/3`), then shows `🏷️ named` for one prompt and goes. It's plain
-  text, so there's nothing to click.
-
-[Everything Name Tag does →](plugins/name-tag)
-
 ---
 
 ## How they work together
 
 There's a status row under the prompt with one item for each neighbour you've installed, always in the same
-order. Click an item, or run its command, to open its pane. Open a few and they turn into tabs. Esc closes a pane.
-Your Serve's item is the exception: it has Claude ask its questions instead of opening a pane.
+order. Click `📸 4`, or run `/gallery`, to open Show & Tell's pane; Esc closes it. Your Serve's item has Claude ask
+its questions instead of opening a pane.
 
 ```
-? for shortcuts   😤 3 grudges  🎾 your serve  📺 on air  📸 4  🔔 #42 CI 3/5 · reviews 1/2
+? for shortcuts   🎾 your serve  📸 4
 ```
 
 When a neighbour has something to tell you, it gets a line in the band above the prompt. Long lines wrap instead
-of getting cut off:
-
-![Claude Code with five of the neighbours: a Your Serve question and a Previously On recap in the band, the status row below](docs/screenshots/previously-recap.png)
-
-To press a band button, type its digit into an empty prompt or click it. If there's already text in the prompt,
-press `ctrl+x tab` first. Each neighbour has its own digits, so they never clash. Show & Tell's and Closing Time's
-band buttons don't have digits, so either click them or open their pane and use its letter keys:
-
-| Grudge | Previously On |
-|---|---|
-| `4` `5` | `0` |
-
-The band clears when you send your next prompt.
+of getting cut off. Show & Tell's band buttons don't have digits, so either click them or open the gallery and use
+its letter keys. The band clears when you send your next prompt.
 
 ## Settings
 
@@ -163,38 +81,17 @@ You can change these in `/config`, or with `/plugin configure <plugin>@claude-de
 
 | Plugin | Setting | Default |
 |---|---|---|
-| `previously-on` | Recap after this many idle minutes | 20 |
 | `show-and-tell` | Keep new thumbnails above the prompt for (seconds) | 20 |
-| `closing-time` | Watch any PR Claude raises, not only ones from `/ship` | on |
-| `closing-time` | Agent reviewers (comma-separated logins; empty means any bot that reviews) | empty |
-| `closing-time` | Post thread replies: `ask` waits for you to press Post, `auto` posts them | `ask` |
-| `closing-time` | Rerun a job once when its log looks like a flake | on |
-| `closing-time` | Fix attempts per check / review rounds before handing over to you | 2 / 3 |
-| `closing-time` | Minutes to wait for a bot review / with no change before it stops watching | 15 / 60 |
-| `name-tag` | Name the session after this many prompts | 3 |
 
 ## What runs in the background
 
 Here's what goes on behind the scenes, so you know before you install:
 
-- **Model calls on your account.** Grudge and Previously On send short questions to a small model (Haiku): is
-  this a lasting correction, what was this session about. Each call only happens after a cheap local check
-  passes, so most turns don't make any. Your Serve makes no calls of its own: each press starts a normal turn on
-  your session's model.
-  Previously On's recap re-reads the session transcript once each time you come back, mostly from the prompt
-  cache. Closing Time asks Haiku whether a failed CI log looks like a flake, and starts one read-only triage
-  subagent on your session's model for each bot review comment.
-- **A title call.** Name Tag sends your first three prompts, cut to 300 characters each, to Haiku once per
-  session to write its title.
-- **GitHub, through `gh`.** Closing Time runs `gh` with your login while it watches a PR: a GraphQL query on
-  each check, the PR diff and failed job logs when there's something to look at, and reruns of flaky jobs. It only
-  posts replies to review threads when you press Post (or if you've set it to `auto`).
+- **No model calls of their own.** Your Serve's press starts a normal turn on your session's model. Show & Tell
+  makes no model calls.
 - **Files on disk.** Show & Tell keeps copies of pasted and tool images in `~/.claude/show-and-tell/`, and uses
   `cp`, `sips` or `magick` to copy and convert them. It deletes files older than seven days when a session starts
   (macOS and Linux).
-- **Stored data.** Each plugin keeps a small store in your Claude Code config directory. Grudge keeps its rules
-  there, and Previously On a log with one line per session going back two weeks. Uninstalling a plugin doesn't
-  delete its store.
 - Nothing is sent anywhere else.
 
 ## Requirements

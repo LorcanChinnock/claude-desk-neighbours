@@ -7,12 +7,8 @@ body:
     attributes:
       label: Which plugin?
       options:
-        - Grudge
         - Your Serve
-        - Previously On
         - Show & Tell
-        - Closing Time
-        - Name Tag
     validations:
       required: true
   - type: textarea
