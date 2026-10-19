@@ -1,5 +1,19 @@
 # Changelog
 
+## [3.0.0](https://github.com/LorcanChinnock/claude-desk-neighbours/compare/v2.1.0...v3.0.0) (2026-10-19)
+
+
+### ⚠ BREAKING CHANGES
+
+* **show-and-tell:** remove the status-row gallery button ([#49](https://github.com/LorcanChinnock/claude-desk-neighbours/issues/49))
+* keep only your-serve and show-and-tell ([#44](https://github.com/LorcanChinnock/claude-desk-neighbours/issues/44))
+
+### Features
+
+* keep only your-serve and show-and-tell ([#44](https://github.com/LorcanChinnock/claude-desk-neighbours/issues/44)) ([85a17d5](https://github.com/LorcanChinnock/claude-desk-neighbours/commit/85a17d58dd19b65e7d08dcdd1c13cbcd88ec461c))
+* **show-and-tell:** remove the status-row gallery button ([#49](https://github.com/LorcanChinnock/claude-desk-neighbours/issues/49)) ([2f1b397](https://github.com/LorcanChinnock/claude-desk-neighbours/commit/2f1b3976f62b9399f7476eb89db8968e369483ef))
+* **whats-next:** brief the next task and start it in a fresh context ([#50](https://github.com/LorcanChinnock/claude-desk-neighbours/issues/50)) ([b7f4c23](https://github.com/LorcanChinnock/claude-desk-neighbours/commit/b7f4c23d72718a534a144cfe57d4f4dde219db42))
+
 ## [2.1.0](https://github.com/LorcanChinnock/claude-desk-neighbours/compare/v2.0.0...v2.1.0) (2026-10-18)
 
 
