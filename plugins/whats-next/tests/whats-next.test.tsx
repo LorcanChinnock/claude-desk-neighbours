@@ -2,7 +2,7 @@ import { expect, mock, test } from 'claude-code/testing'
 import type { ModelForkResult, On } from 'claude-code'
 import type { Engine } from 'claude-code/testing'
 
-import { NOTHING_LEFT, briefingAsk } from '../hooks/register'
+import { NOTHING_LEFT, RESEARCH, briefingAsk, researchAsk } from '../hooks/register'
 
 const BRIEFING = 'Goal: add the auth tests in src/auth.test.ts. Verify with npm test.'
 
@@ -23,8 +23,13 @@ type World = {
   reply: ModelForkResult
   percent: number | undefined
   sessionId: string
+  forkReply: ModelForkResult | null
+  isModelDown: boolean
   forks: string[]
+  completes: { model: string; prompt: string }[]
+  ran: string[]
   opened: string[]
+  narrow: boolean
   closed: string[]
   cleared: string[]
   submitted: { text: string; asUser?: true }[]
@@ -41,8 +46,13 @@ function world(on: On): World {
     reply: { isAnswered: true, text: `\n${BRIEFING}\n`, usage: { input_tokens: 1, output_tokens: 1, cache_read_input_tokens: 1, cache_creation_input_tokens: 0 } },
     percent: undefined,
     sessionId: 'sess-1',
+    forkReply: null,
+    isModelDown: false,
     forks: [],
+    completes: [],
+    ran: [],
     opened: [],
+    narrow: false,
     closed: [],
     cleared: [],
     submitted: [],
@@ -57,11 +67,25 @@ function world(on: On): World {
   on('session.usage', () => ({ value: { startedAt: 0, context: { window: 200_000, percent: w.percent }, rateLimits: [] } }))
   on('model.fork', ($, e) => {
     w.forks.push(e.prompt)
+    return { value: w.forkReply ?? w.reply }
+  })
+  on('session.model', () => {
+    if (w.isModelDown) throw new Error('model unavailable')
+    return { value: 'claude-opus-5-5' }
+  })
+  on('process.run', ($, e) => {
+    const command = e.argv.join(' ')
+    w.ran.push(command)
+    if (command.startsWith('gh issue list --assignee')) return { value: { exitCode: 1, stdout: '', stderr: 'gh: not logged in\nrun gh auth login', isStdoutTruncated: false, isStderrTruncated: false } }
+    return { value: { exitCode: 0, stdout: `out of ${command}\n`, stderr: '', isStdoutTruncated: false, isStderrTruncated: false } }
+  })
+  on('model.complete', ($, e) => {
+    w.completes.push({ model: e.model, prompt: e.prompt })
     return { value: w.reply }
   })
   on('ui.open', ($, e) => {
     w.opened.push(e.id)
-    return { value: { isPlaced: true as const } }
+    return { value: w.narrow ? { isPlaced: false as const, reason: 'unasked panes seat from 144 columns; 80 now' } : { isPlaced: true as const } }
   })
   on('ui.close', ($, e) => {
     w.closed.push(e.id)
@@ -207,15 +231,82 @@ test('Cancel closes the pane and drops the briefing, leaving the session as it w
   expect(await pane.find({ type: 'Text', text: /No briefing yet/ })).toBeDefined()
 })
 
-test('it says so in one line when nothing is left, and when there is nothing to brief from', async ($, on) => {
+test('it says so in one line when nothing is left', async ($, on) => {
   const w = world(on)
   w.reply = { isAnswered: true, text: ` ${NOTHING_LEFT}\n`, usage: { input_tokens: 1, output_tokens: 1, cache_read_input_tokens: 0, cache_creation_input_tokens: 0 } }
   const hint = await $.ui.mount({ plugin: 'whats-next', surface: 'terminal', ...HINT })
   await hint.press({ key: 'desk-3-whats-next' })
   expect(w.logs).toEqual(['⏭️ Nothing left to do'])
-  w.reply = { isAnswered: false, reason: 'nothing-to-fork' }
+  expect(w.opened).toEqual([])
+})
+
+test('a blank session works out the next task from the repo and GitHub instead', async ($, on) => {
+  const w = world(on)
+  w.forkReply = { isAnswered: false, reason: 'nothing-to-fork' }
+  const { text } = await $.command.run({
+    command: 'whats-next',
+    args: '',
+    origin: { kind: 'composer' },
+    presentation: { isFullscreen: false, columns: 100 },
+  })
+  expect(text).toBe("⏭️ Writing the briefing for what's next")
+  await w.clock.advance(1)
+  await w.clock.settle()
+  expect(w.ran).toEqual(RESEARCH.map(r => r.argv.join(' ')))
+  expect(w.toasts).toEqual(['⏭️ Looking at the repo and GitHub for the next task'])
+  expect(w.completes).toHaveLength(1)
+  const { model, prompt } = w.completes[0]!
+  expect(model).toBe('claude-opus-5-5')
+  expect(prompt).toContain('## pull requests\nout of gh pr status')
+  expect(prompt).toContain('## issues assigned to me\n(failed: gh: not logged in)')
+  expect(prompt).toBe(researchAsk('', prompt.slice(prompt.indexOf('<findings>\n') + 11, prompt.lastIndexOf('\n</findings>'))))
+  expect(w.opened).toEqual(['whats-next'])
+  const pane = await $.ui.mount({ plugin: 'whats-next', surface: 'terminal', ...PANE })
+  expect(await pane.find({ type: 'Text', text: BRIEFING })).toBeDefined()
+})
+
+test('a pane too narrow to draw unasked waits behind a band that opens it', async ($, on) => {
+  const w = world(on)
+  w.narrow = true
+  const band = await $.ui.mount({ plugin: 'whats-next', surface: 'terminal', ...BAND })
+  const hint = await $.ui.mount({ plugin: 'whats-next', surface: 'terminal', ...HINT })
   await hint.press({ key: 'desk-3-whats-next' })
-  expect(w.toasts).toEqual(['⏭️ No briefing: nothing to brief from yet'])
+  expect(await band.find({ type: 'Text', text: '⏭️ The briefing is ready.' })).toBeDefined()
+
+  w.narrow = false
+  await band.press({ key: 'ready-open' })
+  expect(w.opened).toEqual(['whats-next', 'whats-next'])
+  expect(await band.find({ key: 'ready-open' })).toBeUndefined()
+})
+
+test('Discard on the band drops the waiting briefing', async ($, on) => {
+  const w = world(on)
+  w.narrow = true
+  const band = await $.ui.mount({ plugin: 'whats-next', surface: 'terminal', ...BAND })
+  const hint = await $.ui.mount({ plugin: 'whats-next', surface: 'terminal', ...HINT })
+  await hint.press({ key: 'desk-3-whats-next' })
+  await band.press({ key: 'ready-discard' })
+  expect(w.closed).toEqual(['whats-next'])
+  expect(await band.find({ key: 'ready-open' })).toBeUndefined()
+  const pane = await $.ui.mount({ plugin: 'whats-next', surface: 'terminal', ...PANE })
+  expect(await pane.find({ type: 'Text', text: /No briefing yet/ })).toBeDefined()
+})
+
+test('a briefing that throws says so instead of going quiet', async ($, on) => {
+  const w = world(on)
+  w.isModelDown = true
+  w.forkReply = { isAnswered: false, reason: 'nothing-to-fork' }
+  const hint = await $.ui.mount({ plugin: 'whats-next', surface: 'terminal', ...HINT })
+  await hint.press({ key: 'desk-3-whats-next' })
+  expect(w.toasts.at(-1)).toBe('⏭️ Could not write the briefing')
+})
+
+test('a failed briefing says why in one line', async ($, on) => {
+  const w = world(on)
+  w.reply = { isAnswered: false, reason: 'empty-reply' }
+  const hint = await $.ui.mount({ plugin: 'whats-next', surface: 'terminal', ...HINT })
+  await hint.press({ key: 'desk-3-whats-next' })
+  expect(w.toasts).toEqual(['⏭️ No briefing: empty-reply'])
   expect(w.opened).toEqual([])
 })
 
@@ -268,6 +359,14 @@ test('a subagent finishing does not nudge', { options: { nudgePercent: 50 } }, a
 test('the ask forbids pointing back at the old conversation', () => {
   const ask = briefingAsk('')
   expect(ask).toContain('[Image #N]')
+  expect(ask).toContain(NOTHING_LEFT)
+  expect(ask).toContain('How to verify')
+})
+
+test('the research ask fences the findings as data and keeps the focus', () => {
+  const ask = researchAsk('the auth tests', '## open issues\n#7 auth')
+  expect(ask).toContain('The next task is: the auth tests')
+  expect(ask).toContain('<findings>\n## open issues\n#7 auth\n</findings>')
   expect(ask).toContain(NOTHING_LEFT)
   expect(ask).toContain('How to verify')
 })

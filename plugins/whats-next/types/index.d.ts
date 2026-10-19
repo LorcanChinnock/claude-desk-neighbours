@@ -9,6 +9,8 @@ declare module 'claude-code' {
       nudgedIn: string | null
       /** A briefing is being written. */
       isDrafting: boolean
+      /** The briefing is written but its pane is not drawn, so the band offers to open it. */
+      isWaiting: boolean
     }
   }
 }
