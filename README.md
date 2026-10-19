@@ -10,23 +10,25 @@
 
 <p align="center">
   <a href="#-your-serve">🎾 Your Serve</a> ·
-  <a href="#-show--tell">📸 Show & Tell</a>
+  <a href="#-show--tell">📸 Show & Tell</a> ·
+  <a href="#️-whats-next">⏭️ What's Next</a>
 </p>
 
 Claude Code does the actual work well. It's the stuff around the work that slips. It asks you something in the
-last line of a long reply. The screenshot you pasted three prompts ago is just `[Image #1]`. **Desk Neighbours**
-are two small mods for that kind of thing. They sit in a status row under your prompt and only pipe up, in a
+last line of a long reply. The screenshot you pasted three prompts ago is just `[Image #1]`. The session gets so
+long that the context fills up. **Desk Neighbours** are three small mods for that kind of thing. They sit in a status row under your prompt and only pipe up, in a
 single line above it, when there's something worth saying.
 
 ```
 /plugin marketplace add LorcanChinnock/claude-desk-neighbours
 ```
 
-Then install whichever ones you want. They each work on their own, and play nicely together if you have both:
+Then install whichever ones you want. They each work on their own, and play nicely together if you have more than one:
 
 ```
 /plugin install your-serve@claude-desk-neighbours
 /plugin install show-and-tell@claude-desk-neighbours
+/plugin install whats-next@claude-desk-neighbours
 ```
 
 ---
@@ -59,15 +61,30 @@ Then install whichever ones you want. They each work on their own, and play nice
 
 [Everything Show & Tell does →](plugins/show-and-tell)
 
+## ⏭️ What's Next
+
+**When a session gets long, writes a briefing for the next task and starts it in a fresh context.**
+
+- Click `⏭️ whats next` in the status row, or run `/whats-next [focus]`. Claude writes a self-contained prompt for
+  the next task: the goal, where things stand, the files that matter, decisions made, what didn't work, and how to
+  check it's done. Add a focus (`/whats-next the auth tests`) to pick the task yourself.
+- The briefing opens in a pane. `Start` clears the conversation and sends it as the first prompt, `Edit` clears it
+  and puts the briefing in your prompt box, `Copy` copies it, and `Cancel` leaves everything as it was.
+- When the context gets to 70% full, the band above the prompt offers a fresh start, once per session.
+- If nothing is left to do, it says so in one line.
+
+[Everything What's Next does →](plugins/whats-next)
+
 ---
 
 ## How they work together
 
-Your Serve adds an item to the status row under the prompt. Click it and Claude asks its questions. Show & Tell
-has no status-row item: run `/gallery`, or click `Gallery` in its band, to open its pane; Esc closes it.
+Your Serve and What's Next each add an item to the status row under the prompt, always in that order. Show & Tell
+has no status-row item: run `/gallery`, or click `Gallery` in its band, to open its pane; Esc closes it. What's
+Next's review pane opens the same way and closes with Esc too.
 
 ```
-? for shortcuts   🎾 your serve
+? for shortcuts   🎾 your serve   ⏭️ whats next
 ```
 
 When a neighbour has something to tell you, it gets a line in the band above the prompt. Long lines wrap instead
@@ -81,13 +98,15 @@ You can change these in `/config`, or with `/plugin configure <plugin>@claude-de
 | Plugin | Setting | Default |
 |---|---|---|
 | `show-and-tell` | Keep new thumbnails above the prompt for (seconds) | 20 |
+| `whats-next` | Offer a fresh start when the context is this full (%, 0 turns it off) | 70 |
 
 ## What runs in the background
 
 Here's what goes on behind the scenes, so you know before you install:
 
-- **No model calls of their own.** Your Serve's press starts a normal turn on your session's model. Show & Tell
-  makes no model calls.
+- **Model calls.** Your Serve's press starts a normal turn on your session's model. What's Next writes its
+  briefing with one call on your session's model, over the same conversation, so most of it comes from the prompt
+  cache. Show & Tell makes no model calls.
 - **Files on disk.** Show & Tell keeps copies of pasted and tool images in `~/.claude/show-and-tell/`, and uses
   `cp`, `sips` or `magick` to copy and convert them. It deletes files older than seven days when a session starts
   (macOS and Linux).

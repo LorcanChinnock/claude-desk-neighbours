@@ -4,7 +4,7 @@
     "name": "Lorcan Chinnock",
     "url": "https://github.com/LorcanChinnock/claude-desk-neighbours"
   },
-  "description": "Two small Claude Code mods that sit under your prompt: flag unanswered questions and show your work.",
+  "description": "Three small Claude Code mods that sit under your prompt: flag unanswered questions, show your work, and hand the next task to a fresh session.",
   "metadata": {
     "pluginRoot": "./plugins"
   },
@@ -18,6 +18,11 @@
       "name": "show-and-tell",
       "source": "show-and-tell",
       "description": "📸 Shows you the pictures: a thumbnail the moment you paste one, and /gallery of every image you and Claude passed around this session."
+    },
+    {
+      "name": "whats-next",
+      "source": "whats-next",
+      "description": "⏭️ When a session gets long, writes a self-contained briefing for the next task, lets you review it, and starts it in a fresh context."
     }
   ]
 }
