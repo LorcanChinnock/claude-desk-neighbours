@@ -202,6 +202,11 @@ test('where Claude Code keeps no copy, the paste is read off the clipboard', asy
 })
 
 test('the band says it in words on a surface with no pictures, and goes after its time', async ($, on) => {
+  const opened: number[] = []
+  on('ui.open', ($, e) => {
+    opened.push(e.rows ?? 0)
+    return { value: { isPlaced: true as const } }
+  })
   const w = world(on)
   w.files.set(`${CACHE}/1.png`, { base64: PNG, mtimeMs: 1_000 })
   await start($)
@@ -209,7 +214,9 @@ test('the band says it in words on a surface with no pictures, and goes after it
   await w.clock.advance(250)
   const band = await $.ui.mount({ plugin: 'show-and-tell', surface: 'desktop', ...BAND })
   expect(await band.find({ type: 'Text', text: '📸 📎 Pasted image #1 · 200×120' })).toBeDefined()
-  expect(await band.find({ key: 'band-gallery' })).toBeDefined()
+  await band.press({ key: 'band-gallery' })
+  // Inline, a pane gets a third of the height unless it asks; a picture needs more.
+  expect(opened).toEqual([24])
   await $.prompt.submit({ text: '[Image #1]', wait: false, origin: { kind: 'composer' } })
   await w.clock.advance(20_000)
   expect(await band.find({ key: 'band-gallery' })).toBeUndefined()
@@ -259,31 +266,14 @@ test('a picture a shell command makes is found after it runs; older files are no
   expect(await pane.find({ key: 'act-open' })).toBeDefined()
 })
 
-test('its hint item joins the shared row in key order, and a click opens the gallery', async ($, on) => {
-  const opened: string[] = []
+test('it adds nothing to the status row under the prompt', async ($, on) => {
   on('ui.render', { component: 'PromptHint' }, ($, e) => {
-    const { Box, Text, Button } = $.ui.resolve(e)
-    return (
-      <Box key="desk-hint" flexDirection="row" columnGap={2}>
-        <Text>? for shortcuts</Text>
-        <Button key="desk-9-other" plain label="📎 other" onPress={() => undefined} />
-        <Button key="desk-4-shrink-ray" plain label="🔫 armed" onPress={() => undefined} />
-      </Box>
-    )
-  })
-  on('ui.open', ($, e) => {
-    opened.push(`${e.id}:${e.rows}`)
-    return { value: { isPlaced: true as const } }
+    const { Text } = $.ui.resolve(e)
+    return <Text>? for shortcuts</Text>
   })
   world(on)
-  for (const surface of ['terminal', 'desktop'] as const) {
-    const hint = await $.ui.mount({ plugin: 'show-and-tell', surface, component: 'PromptHint', props: { isDraft: false, isWorking: false, hint: '? for shortcuts' } })
-    expect((await hint.findAll({ type: 'Button' })).map(b => b.text)).toEqual(['🔫 armed', '📸 gallery', '📎 other'])
-    await hint.press({ key: 'desk-6-show-and-tell' })
-    await hint.unmount()
-  }
-  // Inline, a pane gets a third of the height unless it asks; a picture needs more.
-  expect(opened).toEqual(['show-and-tell:24', 'show-and-tell:24'])
+  const hint = await $.ui.mount({ plugin: 'show-and-tell', surface: 'terminal', component: 'PromptHint', props: { isDraft: false, isWorking: false, hint: '? for shortcuts' } })
+  expect(await hint.findAll({ type: 'Button' })).toEqual([])
 })
 
 test('kept images older than a week are pruned when a session starts', async ($, on) => {

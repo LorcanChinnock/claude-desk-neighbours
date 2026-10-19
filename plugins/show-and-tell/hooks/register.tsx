@@ -1,5 +1,5 @@
 import { atom, read, update } from 'claude-code'
-import type { EngineInterface, Register, RenderElement, RenderNode } from 'claude-code'
+import type { EngineInterface, Register } from 'claude-code'
 
 import type { Shot, ShotSource } from '../types'
 
@@ -432,41 +432,13 @@ async function reset($: EngineInterface): Promise<void> {
   await $.state.set(PICKED, null)
 }
 
-// The hint line under the prompt is shared. Each Desk Neighbours mod adds one clickable item to
-// a row keyed `desk-hint` after the engine's own hint; items are kept in order by their keys
-// (`desk-1-…` to `desk-6-…`), so the row reads the same alone or together, in any load order.
-const DESK = 'desk-hint'
-
 // The engine draws the band's collapse mark `[-]` over the right end of its first row without
 // narrowing `bodyColumns`, so band rows stop this many cells short of the edge.
 const MARKER = 4
 
-function keyOf(node: RenderNode | undefined): string {
-  if (typeof node !== 'object' || node === null || !('props' in node)) return ''
-  const key = (node.props as Record<string, unknown> | undefined)?.key
-  return typeof key === 'string' ? key : ''
-}
-
-export function joinDesk(below: RenderElement, mine: RenderElement, wrap: (children: RenderNode[]) => RenderElement): RenderElement {
-  if (below.type !== 'Box' || keyOf(below) !== DESK) return wrap([below, mine])
-  const [line, ...items] = below.children ?? []
-  const sorted = [...items.filter(n => keyOf(n) !== keyOf(mine)), mine].sort((a, b) => keyOf(a).localeCompare(keyOf(b)))
-  return { ...below, children: line === undefined ? sorted : [line, ...sorted] }
-}
-
 /** Opens the gallery. Inline it would get a third of the height; a picture needs more. */
 async function openGallery($: EngineInterface): Promise<void> {
   await $.ui.open({ id: PANE, title: TITLE, focus: true, closeOnEscape: true, rows: GALLERY_ROWS, columns: GALLERY_COLUMNS })
-}
-
-/** Opens the gallery, or closes it when it is the one showing. */
-async function togglePane($: EngineInterface): Promise<void> {
-  const pane = (await $.ui.panes()).find(p => p.id === PANE)
-  if (pane?.isShown === true) {
-    await $.ui.close({ id: PANE })
-    return
-  }
-  await openGallery($)
 }
 
 /** The box a picture fills: `columns` wide unless that would make it taller than `maxRows`,
@@ -632,19 +604,6 @@ export const register: Register = (on, options) => {
         </Box>
       </Box>
     )
-  })
-
-  on('ui.render', { component: 'PromptHint' }, async ($, e, next) => {
-    const n = (await read($, shots)).length
-    const label = n === 0 ? '📸 gallery' : `📸 ${n}`
-    const below = await next(e)
-    const { Box, Button } = $.ui.resolve(e)
-    const mine = <Button key="desk-6-show-and-tell" plain dimColor label={label} onPress={() => void togglePane($)} />
-    return joinDesk(below, mine, children => (
-      <Box key={DESK} flexDirection="row" columnGap={2}>
-        {children}
-      </Box>
-    ))
   })
 
   on('ui.render', { component: 'Pane', requestId: PANE }, async ($, e) => {

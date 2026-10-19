@@ -16,9 +16,9 @@ async function serve($: EngineInterface): Promise<void> {
   await $.prompt.submit({ text: ASK })
 }
 
-// The hint line under the prompt is shared. Each Desk Neighbours mod adds one clickable item to
-// a row keyed `desk-hint` after the engine's own hint; items are kept in order by their keys
-// (`desk-1-…` to `desk-5-…`), so the row reads the same alone or together, in any load order.
+// The hint line under the prompt can be shared with other mods. Your Serve adds its item to a row
+// keyed `desk-hint` after the engine's own hint; items on it are kept in order by their keys, so
+// the row reads the same in any load order.
 const DESK = 'desk-hint'
 
 function keyOf(node: RenderNode | undefined): string {
