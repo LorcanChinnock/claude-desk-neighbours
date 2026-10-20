@@ -9,6 +9,7 @@ body:
       options:
         - Your Serve
         - Show & Tell
+        - Ship It
     validations:
       required: true
   - type: textarea
