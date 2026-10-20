@@ -386,3 +386,34 @@ test("a /clear keeps watching the PR under the new session, as What's Next's fre
   expect(note).toContain(`PR #46 (${URL})`)
   expect(note).toContain('thread from ana on src/a.ts: rename this')
 })
+
+test('leaving with /resume keeps the watch stored for when that session is resumed', async ($, on) => {
+  const w = world(on)
+  await shipped($, w)
+  await $.session.end({ reason: 'resume', sessionId: 'sess-1', resume: { id: 'sess-2' } })
+  w.session = 'sess-2'
+  await $.classic.SessionStart({ source: 'resume' })
+  await w.clock.settle()
+  expect(await label($)).toBe('🚢 ship it')
+  await $.session.end({ reason: 'resume', sessionId: 'sess-2', resume: { id: 'sess-1' } })
+  w.session = 'sess-1'
+  await $.classic.SessionStart({ source: 'resume' })
+  await w.clock.advance(1)
+  expect(await label($)).toBe('🚢 #46 · CI ⏳')
+})
+
+test('a ready PR with feedback left past the round cap stays ready and quiet', { options: { maxRounds: 1 } }, async ($, on) => {
+  const w = world(on)
+  w.gh.view = green(VIEW)
+  w.gh.talk = { ...QUIET, comments: [{ id: 'IC1', body: 'nice', url: URL, author: REVIEWER }] }
+  await shipped($, w)
+  await turnEnds($)
+  await w.clock.settle()
+  w.gh.talk = { ...QUIET, comments: [...w.gh.talk.comments, { id: 'IC2', body: 'one more thing', url: URL, author: REVIEWER }] }
+  await w.clock.advance(10_000)
+  const said = [...w.notes]
+  await w.clock.advance(60_000 * 30)
+  expect(w.notes).toEqual(said)
+  expect(w.notes.some(n => n.includes('over to you'))).toBe(false)
+  expect(await label($)).toBe('🚢 #46 · ✅ ready')
+})

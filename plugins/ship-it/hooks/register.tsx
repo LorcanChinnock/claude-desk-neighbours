@@ -332,6 +332,7 @@ async function answer($: EngineInterface, s: Ship): Promise<void> {
   const items = s.open.filter(i => !s.handled.includes(i.id) && (!i.isBot || s.botRounds < BOT_ROUNDS))
   if (items.length === 0) return
   if (s.rounds >= settings.maxRounds) {
+    if (s.phase === 'ready') return
     await change($, x => ({ ...x, phase: 'handed-back', banner: `#${x.number}: ${settings.maxRounds} rounds done, over to you` }))
     return tell($, `#${s.number}: ${settings.maxRounds} rounds done, over to you`)
   }
@@ -550,7 +551,8 @@ export const register: Register = (on, options) => {
       stopPolling()
       const s = await read($, ship).catch(() => null)
       carried = e.reason === 'clear' && s !== null && s.phase !== 'raising' && s.phase !== 'closed' ? { ...s, turn: null } : null
-      await begin($, null).catch(() => undefined)
+      // A clear moves the watch to the new session; a resume leaves it stored for when this session is resumed.
+      await (e.reason === 'clear' ? begin($, null) : $.state.set(SHIP, null)).catch(() => undefined)
     }
     return next(e)
   })
