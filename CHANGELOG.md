@@ -1,5 +1,12 @@
 # Changelog
 
+## [3.2.0](https://github.com/LorcanChinnock/claude-desk-neighbours/compare/v3.1.0...v3.2.0) (2026-10-20)
+
+
+### Features
+
+* **ship-it:** raise a PR and see it through to mergeable ([#55](https://github.com/LorcanChinnock/claude-desk-neighbours/issues/55)) ([df303c7](https://github.com/LorcanChinnock/claude-desk-neighbours/commit/df303c7c8d3a98dd9612b9dba88181341bc117bf))
+
 ## [3.1.0](https://github.com/LorcanChinnock/claude-desk-neighbours/compare/v3.0.0...v3.1.0) (2026-10-19)
 
 
