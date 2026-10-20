@@ -4,7 +4,7 @@
     "name": "Lorcan Chinnock",
     "url": "https://github.com/LorcanChinnock/claude-desk-neighbours"
   },
-  "description": "Three small Claude Code mods that sit under your prompt: flag unanswered questions, show your work, and hand the next task to a fresh session.",
+  "description": "Small Claude Code mods that sit under your prompt: flag unanswered questions, show your work and see your PR through.",
   "metadata": {
     "pluginRoot": "./plugins"
   },
@@ -23,6 +23,11 @@
       "name": "whats-next",
       "source": "whats-next",
       "description": "⏭️ When a session gets long, writes a self-contained briefing for the next task, lets you review it, and starts it in a fresh context."
+    },
+    {
+      "name": "ship-it",
+      "source": "ship-it",
+      "description": "🚢 One press raises a PR for the session's work, then watches CI and reviews and works through the feedback until it's ready to merge."
     }
   ]
 }
