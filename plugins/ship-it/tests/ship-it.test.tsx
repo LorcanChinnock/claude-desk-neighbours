@@ -2,9 +2,29 @@ import { expect, mock, test } from 'claude-code/testing'
 import type { On } from 'claude-code'
 import type { Engine } from 'claude-code/testing'
 
-import type { Ship } from '../types'
-import { MARKER, briefingNote, checksOf, isReady, isRewrite, itemsOf, labelOf, raisePrompt, resolvedIn, tally } from '../hooks/register'
-import type { PrView, Talk } from '../hooks/register'
+import type { Board, Ship, Tracked } from '../types'
+import {
+  MARKER,
+  boardNote,
+  briefingNote,
+  capped,
+  checksOf,
+  glyphOf,
+  isReady,
+  isRewrite,
+  itemsOf,
+  kindOf,
+  labelOf,
+  newsOf,
+  parseRef,
+  prsIn,
+  raisePrompt,
+  repoOfRemote,
+  resolvedIn,
+  tally,
+  trackLabel,
+} from '../hooks/register'
+import type { PrNode, PrView, Seen, Talk } from '../hooks/register'
 
 const URL = 'https://github.com/me/app/pull/46'
 const HEAD = 'abc123'
@@ -38,7 +58,9 @@ const green = (view: PrView): PrView => ({ ...view, statusCheckRollup: [{ __type
 
 type World = {
   clock: ReturnType<typeof mock.clock>
-  gh: { view: PrView; talk: Talk; branchPr: { number: number; url: string; state: string } | null }
+  gh: { view: PrView; talk: Talk; branchPr: { number: number; url: string; state: string } | null; prs: Record<string, PrNode> }
+  /** What a Bash call's result carries: the engine's reading of the git and gh work it did. */
+  bash: { gitOperation?: unknown }
   ran: string[][]
   asks: string[]
   notes: string[]
@@ -47,7 +69,7 @@ type World = {
 }
 
 function world(on: On): World {
-  const w: World = { clock: mock.clock(on, { now: 1_000 }), gh: { view: VIEW, talk: QUIET, branchPr: null }, ran: [], asks: [], notes: [], store: new Map(), session: 'sess-1' }
+  const w: World = { clock: mock.clock(on, { now: 1_000 }), gh: { view: VIEW, talk: QUIET, branchPr: null, prs: {} }, bash: {}, ran: [], asks: [], notes: [], store: new Map(), session: 'sess-1' }
   on('store.get', ($, e) => ({ value: w.store.get(e.key) }))
   on('store.set', ($, e) => {
     w.store.set(e.key, JSON.parse(JSON.stringify(e.value)))
@@ -73,6 +95,14 @@ function world(on: On): World {
     const [, noun, verb, arg] = argv
     if (noun === 'pr' && verb === 'view' && arg === '--json') return w.gh.branchPr === null ? fail : ok(w.gh.branchPr)
     if (noun === 'pr' && verb === 'view' && argv.includes('--json')) return ok(w.gh.view)
+    if (noun === 'api' && argv.some(a => a.includes('p0:'))) {
+      const query = argv.find(a => a.startsWith('query=')) ?? ''
+      const data: Record<string, unknown> = {}
+      for (const m of query.matchAll(/(p\d+): repository\(owner: "([^"]+)", name: "([^"]+)"\) \{\s*pullRequest\(number: (\d+)\)/g)) {
+        data[m[1] ?? ''] = { pullRequest: w.gh.prs[`${m[2]}/${m[3]}#${m[4]}`] ?? null }
+      }
+      return ok({ data })
+    }
     if (noun === 'api') {
       const { threads, comments, reviews } = w.gh.talk
       return ok({ data: { repository: { pullRequest: { reviewThreads: { nodes: threads }, comments: { nodes: comments }, reviews: { nodes: reviews } } } } })
@@ -97,7 +127,7 @@ function world(on: On): World {
   on('session.start', ($, e) => ({ cwd: e.cwd }))
   on('command.register', ($, e) => ({ value: { command: e.name } }))
   on('tool.register', ($, e) => ({ value: { tool: `mcp__ship-it__${e.name}` } }))
-  on('tool.call', () => ({ result: 'ran' }))
+  on('tool.call', ($, e) => ({ result: e.tool === 'Bash' ? { stdout: '', stderr: '', interrupted: false, ...w.bash } : 'ran' }))
   on('ui.render', ($, e) => {
     const { Text } = $.ui.resolve(e)
     return <Text>? for shortcuts</Text>
@@ -416,4 +446,259 @@ test('a ready PR with feedback left past the round cap stays ready and quiet', {
   expect(w.notes).toEqual(said)
   expect(w.notes.some(n => n.includes('over to you'))).toBe(false)
   expect(await label($)).toBe('🚢 #46 · ✅ ready')
+})
+
+// Linked PRs
+
+const OTHER = 'https://github.com/me/app/pull/51'
+
+function node(number: number, over: Partial<PrNode> = {}, contexts: PrNode['commits']['nodes'][number]['commit']['statusCheckRollup'] = null): PrNode {
+  return {
+    number,
+    url: `https://github.com/me/app/pull/${number}`,
+    title: `PR ${number}`,
+    state: 'OPEN',
+    isDraft: false,
+    mergeable: 'MERGEABLE',
+    reviewDecision: null,
+    commits: { nodes: [{ commit: { statusCheckRollup: contexts } }] },
+    reviewThreads: { nodes: [] },
+    ...over,
+  }
+}
+
+const running = { contexts: { nodes: [{ __typename: 'CheckRun', name: 'lint', status: 'IN_PROGRESS' }] } }
+const failing = { contexts: { nodes: [{ __typename: 'CheckRun', name: 'lint', status: 'COMPLETED', conclusion: 'FAILURE' }] } }
+const passing = { contexts: { nodes: [{ __typename: 'CheckRun', name: 'lint', status: 'COMPLETED', conclusion: 'SUCCESS' }] } }
+
+function row(number: number, over: Partial<Tracked> = {}): Tracked {
+  return {
+    repo: 'me/app',
+    number,
+    url: `https://github.com/me/app/pull/${number}`,
+    title: `PR ${number}`,
+    source: 'session',
+    kind: 'open',
+    isDraft: false,
+    checks: [],
+    reviewDecision: null,
+    threads: { human: 0, bot: 0 },
+    addedAt: 0,
+    changedAt: 0,
+    ...over,
+  }
+}
+
+const seen = (over: Partial<Seen>): Seen => ({ title: 't', state: 'OPEN', mergeable: 'MERGEABLE', isDraft: false, reviewDecision: null, checks: [], threads: { human: 0, bot: 0 }, ...over })
+const PRS_PANE = { plugin: 'ship-it', surface: 'terminal', component: 'Pane', requestId: 'ship-it-prs', props: { title: 'x', isFocused: true, bodyColumns: 90, placement: 'dock', scroll: { offset: 0, bodyRows: 30 }, view: {} } } as const
+const BAND = { plugin: 'ship-it', surface: 'terminal', component: 'AbovePrompt', props: { hasSurvey: false, isWorking: false, maxRows: 10, bodyColumns: 100, scroll: { offset: 0, bodyRows: 10 }, view: {} } } as const
+
+async function chips($: Engine): Promise<string | undefined> {
+  const hint = await $.ui.mount({ ...HINT, surface: 'terminal' })
+  const text = (await hint.find({ key: 'desk-5-ship-it-prs' }))?.text
+  await hint.unmount()
+  return text
+}
+
+const bash = ($: Engine, command = 'gh pr create') => $.tool.call({ tool: 'Bash', command, description: 'x' })
+const boardOf = (w: World, session = 'sess-1') => w.store.get(`board:${session}`) as Board | undefined
+
+test('one glyph per PR, the most urgent one', () => {
+  const fail = { name: 'lint', state: 'fail' as const, url: null }
+  const pending = { name: 'test', state: 'pending' as const, url: null }
+  expect(kindOf(seen({ state: 'MERGED', mergeable: 'CONFLICTING' }))).toBe('merged')
+  expect(kindOf(seen({ mergeable: 'CONFLICTING', checks: [fail] }))).toBe('conflict')
+  expect(kindOf(seen({ checks: [fail, pending], reviewDecision: 'CHANGES_REQUESTED' }))).toBe('fail')
+  expect(kindOf(seen({ reviewDecision: 'CHANGES_REQUESTED', threads: { human: 2, bot: 0 } }))).toBe('changes')
+  expect(kindOf(seen({ threads: { human: 2, bot: 0 }, checks: [pending] }))).toBe('threads')
+  expect(kindOf(seen({ checks: [pending], reviewDecision: 'REVIEW_REQUIRED' }))).toBe('pending')
+  expect(kindOf(seen({ reviewDecision: 'REVIEW_REQUIRED' }))).toBe('review')
+  expect(kindOf(seen({}))).toBe('ready')
+  expect(kindOf(seen({ isDraft: true }))).toBe('open')
+  expect(kindOf(seen({ threads: { human: 0, bot: 1 } }))).toBe('open')
+  expect(glyphOf(row(1, { kind: 'threads', threads: { human: 3, bot: 0 } }))).toBe('💬3')
+  expect(glyphOf(row(1, { kind: null }))).toBe('…')
+})
+
+test('the status row shows the most urgent PRs first, and a merged one only until the pane is opened', () => {
+  const b: Board = {
+    rows: [row(1, { kind: 'pending' }), row(2, { kind: 'fail' }), row(3, { kind: 'merged', changedAt: 5 }), row(4, { kind: 'ready' }), row(5, { kind: 'open' })],
+    banner: null,
+    bannerPr: null,
+    selected: null,
+    seenAt: 0,
+  }
+  expect(trackLabel(b)).toBe('#2 ❌ · #4 ✅ · #1 ⏳ +2')
+  expect(trackLabel({ ...b, rows: [row(3, { kind: 'merged', changedAt: 5 })] })).toBe('#3 🟣')
+  expect(trackLabel({ ...b, rows: [row(3, { kind: 'merged', changedAt: 5 })], seenAt: 10 })).toBeNull()
+  expect(trackLabel({ ...b, rows: [] })).toBeNull()
+})
+
+test('says what changed, and nothing on the first look or when nothing that matters did', () => {
+  const failed = { name: 'lint', state: 'fail' as const, url: null }
+  expect(newsOf(row(1, { kind: null }), row(1, { kind: 'fail', checks: [failed] }))).toBeNull()
+  expect(newsOf(row(1, { kind: 'pending' }), row(1, { kind: 'fail', checks: [failed] }))).toBe('#1 CI failed (lint)')
+  expect(newsOf(row(1, { kind: 'pending' }), row(1, { kind: 'pending' }))).toBeNull()
+  expect(newsOf(row(1, { kind: 'pending' }), row(1, { kind: 'review' }))).toBeNull()
+  expect(newsOf(row(1, { kind: 'pending' }), row(1, { kind: 'ready' }))).toBe('#1 ready to merge')
+  expect(newsOf(row(1, { kind: 'threads', threads: { human: 1, bot: 0 } }), row(1, { kind: 'threads', threads: { human: 3, bot: 0 } }))).toBe('#1 2 new comments')
+})
+
+test('reads PR links, refs and remotes, and keeps at most eight rows', () => {
+  expect(prsIn(`see ${OTHER} and ${OTHER}, and https://github.com/acme/web/pull/7.`).map(p => `${p.repo}#${p.number}`)).toEqual(['me/app#51', 'acme/web#7'])
+  expect(repoOfRemote('git@github.com:me/app.git')).toBe('me/app')
+  expect(repoOfRemote('https://github.com/me/app')).toBe('me/app')
+  expect(repoOfRemote('https://gitlab.com/me/app.git')).toBeNull()
+  expect(parseRef('#51', 'me/app')?.url).toBe(OTHER)
+  expect(parseRef('acme/web#7', 'me/app')?.repo).toBe('acme/web')
+  expect(parseRef(OTHER, null)?.number).toBe(51)
+  expect(parseRef('51', null)).toBeNull()
+  expect(parseRef('the auth one', 'me/app')).toBeNull()
+  const rows = [row(1, { kind: 'merged' }), ...[2, 3, 4, 5, 6, 7, 8, 9].map(n => row(n))]
+  expect(capped(rows).map(r => r.number)).toEqual([2, 3, 4, 5, 6, 7, 8, 9])
+})
+
+test('a PR Claude opens is tracked from the Bash result, once', async ($, on) => {
+  const w = world(on)
+  await start($)
+  w.gh.prs['me/app#51'] = node(51, {}, running)
+  w.bash = { gitOperation: { pr: { number: 51, url: OTHER, action: 'created' } } }
+  await bash($)
+  await w.clock.settle()
+  await w.clock.advance(1)
+  expect(await chips($)).toBe('#51 ⏳')
+  expect(await label($)).toBe('🚢 ship it')
+  await bash($, 'gh pr edit 51 --title x')
+  await w.clock.settle()
+  expect(boardOf(w)?.rows.map(r => [r.number, r.source, r.title])).toEqual([[51, 'session', 'PR 51']])
+})
+
+test('a pasted PR link is tracked, but not the one Ship It already drives', async ($, on) => {
+  const w = world(on)
+  await shipped($, w)
+  w.gh.prs['me/app#51'] = node(51, { reviewDecision: 'REVIEW_REQUIRED' })
+  await $.prompt.submit({ text: `look at ${URL} and ${OTHER}`, origin: { kind: 'composer' }, wait: false })
+  await w.clock.settle()
+  await w.clock.advance(1)
+  expect(boardOf(w)?.rows.map(r => r.number)).toEqual([51])
+  expect(await chips($)).toBe('#51 👀')
+  expect(await label($)).toBe('🚢 #46 · CI ⏳')
+})
+
+test("the branch's open PR is tracked when a session starts", async ($, on) => {
+  const w = world(on)
+  w.gh.branchPr = { number: 51, url: OTHER, state: 'OPEN' }
+  w.gh.prs['me/app#51'] = node(51)
+  await start($)
+  await w.clock.settle()
+  await w.clock.advance(1)
+  expect(boardOf(w)?.rows.map(r => [r.number, r.source, r.kind])).toEqual([[51, 'branch', 'ready']])
+})
+
+test('a change worth knowing gets one band line and, when loud, a notification', async ($, on) => {
+  const w = world(on)
+  await start($)
+  w.gh.prs['me/app#51'] = node(51, {}, running)
+  w.gh.prs['me/app#52'] = node(52, {}, running)
+  await $.command.run({ command: 'prs', args: 'add #51', origin: { kind: 'composer' }, presentation: { isFullscreen: false, columns: 100 } })
+  await $.command.run({ command: 'prs', args: 'add https://github.com/me/app/pull/52', origin: { kind: 'composer' }, presentation: { isFullscreen: false, columns: 100 } })
+  await w.clock.advance(1)
+  // Still running: nothing to say.
+  await w.clock.advance(60_000)
+  expect(boardOf(w)?.banner).toBeNull()
+  expect(w.notes).toEqual([])
+
+  w.gh.prs['me/app#51'] = node(51, {}, failing)
+  w.gh.prs['me/app#52'] = node(52, {}, passing)
+  await w.clock.advance(60_000)
+  expect(boardOf(w)?.banner).toBe('#51 CI failed (lint) · #52 ready to merge')
+  expect(w.notes).toEqual(['#51 CI failed (lint) · #52 ready to merge'])
+  const band = await $.ui.mount(BAND)
+  expect(await band.find({ type: 'Text', text: '🚢 #51 CI failed (lint) · #52 ready to merge' })).toBeDefined()
+  expect(await band.find({ key: 'track-pr' })).toBeUndefined()
+  await band.unmount()
+
+  // Your next prompt clears it.
+  await $.prompt.submit({ text: 'ok', origin: { kind: 'composer' }, wait: false })
+  await w.clock.settle()
+  expect(boardOf(w)?.banner).toBeNull()
+})
+
+test('looks less often while nothing changes, and stops once every PR is merged or closed', async ($, on) => {
+  const w = world(on)
+  await start($)
+  w.gh.prs['me/app#51'] = node(51)
+  await $.command.run({ command: 'prs', args: 'add #51', origin: { kind: 'composer' }, presentation: { isFullscreen: false, columns: 100 } })
+  const looks = () => w.ran.filter(a => a[1] === 'api').length
+  await w.clock.advance(1)
+  expect(looks()).toBe(1)
+  await w.clock.advance(60_000)
+  expect(looks()).toBe(2)
+  await w.clock.advance(60_000)
+  expect(looks()).toBe(2)
+  await w.clock.advance(60_000)
+  expect(looks()).toBe(3)
+
+  w.gh.prs['me/app#51'] = node(51, { state: 'MERGED' })
+  await w.clock.advance(240_000)
+  expect(looks()).toBe(4)
+  expect(w.notes).toEqual(['#51 merged'])
+  await w.clock.advance(60_000 * 30)
+  expect(looks()).toBe(4)
+  expect(await chips($)).toBe('#51 🟣')
+})
+
+test('the pane lists each PR and hands one to Ship It to see through', async ($, on) => {
+  const w = world(on)
+  await start($)
+  w.gh.prs['me/app#51'] = node(51, { title: 'Fix the recorder crash', reviewThreads: { nodes: [{ isResolved: false, comments: { nodes: [{ body: 'why?', author: { __typename: 'User' } }] } }] } }, failing)
+  await $.command.run({ command: 'prs', args: 'add #51', origin: { kind: 'composer' }, presentation: { isFullscreen: false, columns: 100 } })
+  await w.clock.advance(1)
+  await $.command.run({ command: 'prs', args: '', origin: { kind: 'composer' }, presentation: { isFullscreen: false, columns: 100 } })
+  const pane = await $.ui.mount(PRS_PANE)
+  expect((await pane.find({ key: 'row-me/app#51' }))?.text).toMatch(/• ❌ #51 {2}Fix the recorder crash +CI 0\/1 {2}💬 1 {2}now$/)
+  await pane.press({ key: 'prs-ship' })
+  await pane.unmount()
+  await w.clock.advance(1)
+  expect(boardOf(w)).toBeUndefined()
+  expect((w.store.get('ship:sess-1') as Ship).number).toBe(51)
+  expect(await chips($)).toBeUndefined()
+})
+
+test('/prs remove and the pane untrack a PR', async ($, on) => {
+  const w = world(on)
+  await start($)
+  w.gh.prs['me/app#51'] = node(51)
+  const prs = (args: string) => $.command.run({ command: 'prs', args, origin: { kind: 'composer' }, presentation: { isFullscreen: false, columns: 100 } })
+  expect((await prs('add #51')).text).toBe('🚢 Tracking #51')
+  expect((await prs('add #51')).text).toBe('🚢 Already on #51')
+  expect((await prs('add nonsense')).text).toBe('🚢 Name a PR: a link, owner/name#12 or #12')
+  expect((await prs('remove #51')).text).toBe('🚢 Stopped tracking #51')
+  expect(boardOf(w)).toBeUndefined()
+  await prs('add #51')
+  const pane = await $.ui.mount(PRS_PANE)
+  await pane.press({ key: 'prs-untrack' })
+  await pane.unmount()
+  expect(boardOf(w)).toBeUndefined()
+})
+
+test('tracked PRs survive a new session and a /clear, and go into the briefing', async ($, on) => {
+  const w = world(on)
+  await start($)
+  w.gh.prs['me/app#51'] = node(51, {}, running)
+  await $.command.run({ command: 'prs', args: 'add #51', origin: { kind: 'composer' }, presentation: { isFullscreen: false, columns: 100 } })
+  await w.clock.advance(1)
+
+  await start($)
+  await w.clock.settle()
+  await w.clock.advance(1)
+  expect(await chips($)).toBe('#51 ⏳')
+
+  await $.session.end({ reason: 'clear', sessionId: 'sess-1', resume: { id: 'sess-1' } })
+  w.session = 'sess-2'
+  await $.classic.SessionStart({ source: 'clear' })
+  await w.clock.advance(1)
+  expect(boardOf(w)).toBeUndefined()
+  expect(boardOf(w, 'sess-2')?.rows.map(r => r.number)).toEqual([51])
+  expect(boardNote(boardOf(w, 'sess-2')?.rows ?? [])).toContain(`${OTHER} "PR 51": CI running`)
 })

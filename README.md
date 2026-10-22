@@ -87,6 +87,9 @@ Then install whichever ones you want. They each work on their own, and play nice
   right, pushes back on what isn't, replies on every thread and resolves the ones it fixed.
 - The status row shows the PR's state (`🚢 #46 · CI ⏳`), and a notification says when it's ready to merge. It
   never merges unless you turn that on.
+- Every other PR the session links (one Claude opens, a link you paste, the branch's PR, or `/prs add`) gets a
+  glyph in the status row for whose move it is (`#51 ❌ · #53 ✅`), and a line above the prompt when one needs
+  you. `/prs` lists them all with CI, reviews and open threads.
 
 [Everything Ship It does →](plugins/ship-it)
 
@@ -99,10 +102,10 @@ Show & Tell has no status-row item: run `/gallery`, or click `Gallery` in its ba
 it. What's Next's review pane and Ship It's pane open the same way and close with Esc too.
 
 If What's Next starts a fresh session while Ship It is watching a PR, the briefing names the PR and what's open on
-it, and Ship It carries on watching in the new session.
+it, and Ship It carries on watching in the new session. The same goes for the other PRs it tracks.
 
 ```
-? for shortcuts   🎾 your serve   ⏭️ whats next   🚢 #46 · CI ⏳
+? for shortcuts   🎾 your serve   ⏭️ whats next   🚢 #46 · CI ⏳   #51 ❌ · #53 ✅
 ```
 
 When a neighbour has something to tell you, it gets a line in the band above the prompt. Long lines wrap instead
@@ -133,8 +136,9 @@ Here's what goes on behind the scenes, so you know before you install:
   `cp`, `sips` or `magick` to copy and convert them. It deletes files older than seven days when a session starts
   (macOS and Linux).
 - **GitHub, through `gh`.** While Ship It watches a PR it polls it with `gh` (every minute, less often when
-  nothing changes), and Claude's replies are posted with your `gh` login. It keeps the PR it's watching in its
-  plugin store so `/resume` picks it back up.
+  nothing changes), and Claude's replies are posted with your `gh` login. Other PRs linked to the session are
+  polled together in one `gh api graphql` call on the same schedule. It keeps them in its plugin store so
+  `/resume` picks them back up.
 - Nothing is sent anywhere else.
 
 ## Requirements

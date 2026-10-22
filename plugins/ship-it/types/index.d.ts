@@ -58,10 +58,50 @@ export type Ship = {
   at: number
 }
 
+/** How a tracked PR came to be linked to the session. */
+export type TrackSource = 'session' | 'pasted' | 'branch' | 'manual'
+
+/** A tracked PR's most urgent state, the one its glyph shows. */
+export type PrKind = 'merged' | 'closed' | 'conflict' | 'fail' | 'changes' | 'threads' | 'pending' | 'review' | 'ready' | 'open'
+
+/** A PR the session linked, tracked without acting on it. */
+export type Tracked = {
+  /** `owner/name`. */
+  repo: string
+  number: number
+  url: string
+  title: string | null
+  source: TrackSource
+  /** Null until the first look. */
+  kind: PrKind | null
+  isDraft: boolean
+  checks: Check[]
+  reviewDecision: string | null
+  /** Unresolved review threads, by who spoke last. */
+  threads: { human: number; bot: number }
+  addedAt: number
+  /** When `kind` or the thread count last changed. */
+  changedAt: number
+}
+
+/** Every PR the session tracks besides the one Ship It drives, kept per session. */
+export type Board = {
+  rows: Tracked[]
+  /** The band line, until dismissed or the next prompt. */
+  banner: string | null
+  /** The PR the band line is about, `owner/name#n`. */
+  bannerPr: string | null
+  /** The pane's chosen row, `owner/name#n`. */
+  selected: string | null
+  /** When the pane was last opened: rows changed since show a dot. */
+  seenAt: number
+}
+
 declare module 'claude-code' {
   interface PluginState {
     'ship-it': {
       ship: Ship | null
+      board: Board
     }
   }
 }
