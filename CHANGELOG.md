@@ -1,5 +1,12 @@
 # Changelog
 
+## [3.3.0](https://github.com/LorcanChinnock/claude-desk-neighbours/compare/v3.2.0...v3.3.0) (2026-10-22)
+
+
+### Features
+
+* **ship-it:** track every PR the session links ([#57](https://github.com/LorcanChinnock/claude-desk-neighbours/issues/57)) ([ec30dd2](https://github.com/LorcanChinnock/claude-desk-neighbours/commit/ec30dd201f12502c78b6908622bce3e3a8f27d3b))
+
 ## [3.2.0](https://github.com/LorcanChinnock/claude-desk-neighbours/compare/v3.1.0...v3.2.0) (2026-10-20)
 
 
