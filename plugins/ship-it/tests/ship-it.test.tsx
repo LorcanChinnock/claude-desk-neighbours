@@ -101,7 +101,9 @@ function world(on: On): World {
       for (const m of query.matchAll(/(p\d+): repository\(owner: "([^"]+)", name: "([^"]+)"\) \{\s*pullRequest\(number: (\d+)\)/g)) {
         data[m[1] ?? ''] = { pullRequest: w.gh.prs[`${m[2]}/${m[3]}#${m[4]}`] ?? null }
       }
-      return ok({ data })
+      // Like GitHub, any part that doesn't resolve fails the call, but the data that did still comes back.
+      const isPartial = Object.values(data).some(d => (d as { pullRequest: unknown }).pullRequest === null)
+      return isPartial ? { value: { ...ok({ data }).value, exitCode: 1, stderr: 'gh: Could not resolve to a PullRequest' } } : ok({ data })
     }
     if (noun === 'api') {
       const { threads, comments, reviews } = w.gh.talk
@@ -701,4 +703,20 @@ test('tracked PRs survive a new session and a /clear, and go into the briefing',
   expect(boardOf(w)).toBeUndefined()
   expect(boardOf(w, 'sess-2')?.rows.map(r => r.number)).toEqual([51])
   expect(boardNote(boardOf(w, 'sess-2')?.rows ?? [])).toContain(`${OTHER} "PR 51": CI running`)
+})
+
+test("a PR GitHub can't resolve stops being tracked without freezing the rest", async ($, on) => {
+  const w = world(on)
+  await start($)
+  w.gh.prs['me/app#51'] = node(51, {}, running)
+  const prs = (args: string) => $.command.run({ command: 'prs', args, origin: { kind: 'composer' }, presentation: { isFullscreen: false, columns: 100 } })
+  await prs('add #51')
+  await prs('add #99999')
+  await w.clock.advance(1)
+  expect(boardOf(w)?.rows.map(r => [r.number, r.kind])).toEqual([[51, 'pending']])
+  expect(w.notes).toEqual(["🚢 Can't see me/app#99999 on GitHub; stopped tracking it"])
+
+  w.gh.prs['me/app#51'] = node(51, {}, failing)
+  await w.clock.advance(60_000)
+  expect(boardOf(w)?.banner).toBe('#51 CI failed (lint)')
 })

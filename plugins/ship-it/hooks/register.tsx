@@ -225,9 +225,11 @@ const QUERY = `query($owner: String!, $name: String!, $number: Int!) {
   }
 }`
 
-async function gh($: EngineInterface, args: readonly string[]): Promise<unknown> {
+/** With `isPartial`, a failed call's output is still read: `gh api graphql` exits 1 when any part of a query
+ * fails, but prints the `data` it did resolve. */
+async function gh($: EngineInterface, args: readonly string[], isPartial = false): Promise<unknown> {
   const done = await $.process.run(['gh', ...args], { timeoutMs: 60_000 }).catch(() => null)
-  if (done === null || done.exitCode !== 0) return null
+  if (done === null || (done.exitCode !== 0 && !isPartial)) return null
   try {
     return JSON.parse(done.stdout) as unknown
   } catch {
@@ -549,15 +551,17 @@ async function untrack($: EngineInterface, id: string): Promise<boolean> {
 async function pollBoard($: EngineInterface): Promise<void> {
   const live = (await read($, board)).rows.filter(r => !isDone(r))
   if (live.length === 0) return
-  const found = (await gh($, ['api', 'graphql', '-f', `query=${boardQuery(live)}`])) as { data?: Record<string, { pullRequest: PrNode | null } | null> } | null
+  const found = (await gh($, ['api', 'graphql', '-f', `query=${boardQuery(live)}`], true)) as { data?: Record<string, { pullRequest: PrNode | null } | null> } | null
   const data = found?.data
   if (data == null) return scheduleBoard($, settings.pollMs)
   const at = await $.clock.now()
   const looked = new Map<string, Tracked>()
   const news: { line: string; id: string; kind: PrKind }[] = []
+  // A PR GitHub can't resolve (a wrong number, a private or deleted repo) never will, so it stops being tracked.
+  const lost: Tracked[] = []
   live.forEach((row, i) => {
     const node = data[`p${i}`]?.pullRequest
-    if (node == null) return
+    if (node == null) return void lost.push(row)
     const look = seenOf(node)
     const kind = kindOf(look)
     const { title, isDraft, checks, reviewDecision, threads } = look
@@ -569,9 +573,10 @@ async function pollBoard($: EngineInterface): Promise<void> {
   })
   const now = await changeBoard($, b => ({
     ...b,
-    rows: b.rows.map(r => looked.get(prId(r)) ?? r),
+    rows: b.rows.filter(r => !lost.some(l => prId(l) === prId(r))).map(r => looked.get(prId(r)) ?? r),
     ...(news.length === 0 ? {} : { banner: news.map(n => n.line).join(' · '), bannerPr: news.length === 1 ? (news[0]?.id ?? null) : null }),
   }))
+  if (lost.length > 0) $.ui.toast(`🚢 Can't see ${lost.map(r => prId(r)).join(', ')} on GitHub; stopped tracking ${lost.length === 1 ? 'it' : 'them'}`)
   const loud = news.filter(n => LOUD.includes(n.kind))
   if (loud.length > 0) await tell($, loud.map(n => n.line).join(' · '))
 
