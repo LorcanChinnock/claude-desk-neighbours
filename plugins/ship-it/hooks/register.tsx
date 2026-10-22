@@ -1,14 +1,20 @@
 import { atom, read, update } from 'claude-code'
 import type { EngineInterface, Register, RenderElement, RenderNode } from 'claude-code'
 
-import type { Check, Did, Item, Outcome, Ship } from '../types'
+import type { Board, Check, Did, Item, Outcome, PrKind, Ship, TrackSource, Tracked } from '../types'
 
 const SHIP = { plugin: 'ship-it', key: 'ship' } as const
 const ship = atom(SHIP, null)
+const BOARD = { plugin: 'ship-it', key: 'board' } as const
+const EMPTY: Board = { rows: [], banner: null, bannerPr: null, selected: null, seenAt: 0 }
+const board = atom(BOARD, EMPTY)
 
 const COMMAND = 'ship-it'
 const PANE = 'ship-it'
 const TITLE = '🚢 Ship It'
+const PRS_COMMAND = 'prs'
+const PRS_PANE = 'ship-it-prs'
+const PRS_TITLE = '🚢 Linked PRs'
 const REPORT = 'mcp__ship-it__report'
 
 /** Ends every reply Claude posts, so the next poll knows the reply is its own. */
@@ -22,6 +28,10 @@ const MAX_BACKOFF = 3
 const AFTER_TURN_MS = 10_000
 const BODY_CHARS = 1_200
 const KEEP_DAYS = 14
+// Tracked PRs: the most kept, the most shown in the status row, and how soon to look after a push.
+const MAX_TRACKED = 8
+const MAX_CHIPS = 3
+const AFTER_PUSH_MS = 15_000
 
 const FAILED = ['FAILURE', 'TIMED_OUT', 'CANCELLED', 'ACTION_REQUIRED', 'STARTUP_FAILURE', 'ERROR']
 const PENDING = ['PENDING', 'EXPECTED', 'QUEUED', 'IN_PROGRESS', 'WAITING', 'REQUESTED']
@@ -215,9 +225,11 @@ const QUERY = `query($owner: String!, $name: String!, $number: Int!) {
   }
 }`
 
-async function gh($: EngineInterface, args: readonly string[]): Promise<unknown> {
+/** With `isPartial`, a failed call's output is still read: `gh api graphql` exits 1 when any part of a query
+ * fails, but prints the `data` it did resolve. */
+async function gh($: EngineInterface, args: readonly string[], isPartial = false): Promise<unknown> {
   const done = await $.process.run(['gh', ...args], { timeoutMs: 60_000 }).catch(() => null)
-  if (done === null || done.exitCode !== 0) return null
+  if (done === null || (done.exitCode !== 0 && !isPartial)) return null
   try {
     return JSON.parse(done.stdout) as unknown
   } catch {
@@ -275,6 +287,361 @@ export function briefingNote(s: Ship): string {
     open.length === 0 ? 'Nothing is open on it.' : `Open on it:\n${open.join('\n')}`,
     'Put the PR number, its URL and these open items in the briefing\'s current state, and say Ship It will hand new feedback to the new session.',
   ].join('\n')
+}
+
+// Linked PRs: every other PR the session links is tracked without acting on it. One glyph each in the status
+// row, a band line when one changes in a way that needs you, and a row each in the /prs pane.
+
+type PrRef = { repo: string; number: number; url: string }
+
+export const prId = (pr: { repo: string; number: number }): string => `${pr.repo}#${pr.number}`
+
+/** Every PR link in a piece of text, once each. */
+export function prsIn(text: string): PrRef[] {
+  const found = new Map<string, PrRef>()
+  for (const m of text.matchAll(/https:\/\/github\.com\/([\w.-]+\/[\w.-]+)\/pull\/(\d+)/g)) {
+    const pr = { repo: m[1] ?? '', number: Number(m[2]), url: m[0] }
+    found.set(prId(pr), pr)
+  }
+  return [...found.values()]
+}
+
+/** `git@github.com:me/app.git` or `https://github.com/me/app` → `me/app`. */
+export function repoOfRemote(remote: string | null | undefined): string | null {
+  const match = /github\.com[:/]([\w.-]+\/[\w.-]+?)(?:\.git)?\/?$/.exec(remote ?? '')
+  return match?.[1] ?? null
+}
+
+/** A PR named as a link, `owner/name#12`, `#12` or `12`; the bare forms in `here`. */
+export function parseRef(ref: string, here: string | null): PrRef | null {
+  const linked = prsIn(ref)[0]
+  if (linked !== undefined) return linked
+  const match = /^(?:([\w.-]+\/[\w.-]+))?#?(\d+)$/.exec(ref.trim())
+  const repo = match?.[1] ?? here
+  if (match === null || repo === null) return null
+  const number = Number(match[2])
+  return { repo, number, url: `https://github.com/${repo}/pull/${number}` }
+}
+
+/** What one look at a PR found. */
+export type Seen = Pick<Tracked, 'isDraft' | 'checks' | 'reviewDecision' | 'threads'> & { state: string; mergeable: string; title: string }
+
+/** The PR's most urgent state: whose move it is. */
+export function kindOf(pr: Seen): PrKind {
+  if (pr.state === 'MERGED') return 'merged'
+  if (pr.state === 'CLOSED') return 'closed'
+  if (pr.mergeable === 'CONFLICTING') return 'conflict'
+  if (pr.checks.some(c => c.state === 'fail')) return 'fail'
+  if (pr.reviewDecision === 'CHANGES_REQUESTED') return 'changes'
+  if (pr.threads.human > 0) return 'threads'
+  if (pr.checks.some(c => c.state === 'pending')) return 'pending'
+  if (pr.reviewDecision === 'REVIEW_REQUIRED') return 'review'
+  if (!pr.isDraft && pr.mergeable === 'MERGEABLE' && pr.threads.bot === 0) return 'ready'
+  return 'open'
+}
+
+const KIND_GLYPH: Record<PrKind, string> = {
+  merged: '🟣',
+  closed: '⚫',
+  conflict: '⚔️',
+  fail: '❌',
+  changes: '📝',
+  threads: '💬',
+  pending: '⏳',
+  review: '👀',
+  ready: '✅',
+  open: '🟢',
+}
+const KIND_WORD: Record<PrKind, string> = {
+  merged: 'merged',
+  closed: 'closed',
+  conflict: 'conflicts with its base',
+  fail: 'CI failing',
+  changes: 'changes requested',
+  threads: 'comments open',
+  pending: 'CI running',
+  review: 'awaiting review',
+  ready: 'ready to merge',
+  open: 'open',
+}
+// The status row shows the most urgent PRs first: the ones that are your move.
+const URGENCY: readonly PrKind[] = ['conflict', 'fail', 'changes', 'threads', 'ready', 'pending', 'review', 'open', 'merged', 'closed']
+// Changes that are worth a band line, and the ones also worth a notification.
+const NEWS: readonly PrKind[] = ['merged', 'closed', 'conflict', 'fail', 'changes', 'ready']
+const LOUD: readonly PrKind[] = ['merged', 'fail', 'ready']
+
+export function glyphOf(row: Tracked): string {
+  if (row.kind === null) return '…'
+  return row.kind === 'threads' ? `💬${row.threads.human}` : KIND_GLYPH[row.kind]
+}
+
+const rank = (row: Tracked) => (row.kind === null ? URGENCY.length : URGENCY.indexOf(row.kind))
+const isDone = (row: Tracked) => row.kind === 'merged' || row.kind === 'closed'
+
+/** The status row's chips, most urgent first; a merged or closed PR only until the pane is opened. */
+export function trackLabel(b: Board): string | null {
+  const shown = b.rows.filter(r => !isDone(r) || r.changedAt > b.seenAt).sort((x, y) => rank(x) - rank(y))
+  if (shown.length === 0) return null
+  const chips = shown.slice(0, MAX_CHIPS).map(r => `#${r.number} ${glyphOf(r)}`)
+  const more = shown.length - MAX_CHIPS
+  return `${chips.join(' · ')}${more > 0 ? ` +${more}` : ''}`
+}
+
+/** A band line for what changed between two looks, or null. The first look says nothing. */
+export function newsOf(before: Tracked, after: Tracked): string | null {
+  if (before.kind === null || after.kind === null) return null
+  const pr = `#${after.number}`
+  if (after.kind !== before.kind && NEWS.includes(after.kind)) {
+    if (after.kind !== 'fail') return `${pr} ${KIND_WORD[after.kind]}`
+    const failed = after.checks.filter(c => c.state === 'fail').map(c => c.name)
+    return `${pr} CI failed (${failed.slice(0, 2).join(', ')}${failed.length > 2 ? ', …' : ''})`
+  }
+  const more = after.threads.human - before.threads.human
+  return more > 0 && !isDone(after) ? `${pr} ${more} new comment${more === 1 ? '' : 's'}` : null
+}
+
+/** Drops the oldest merged or closed rows first, then the oldest, down to the cap. */
+export function capped(rows: readonly Tracked[]): Tracked[] {
+  const kept = [...rows]
+  while (kept.length > MAX_TRACKED) {
+    const done = kept.findIndex(isDone)
+    kept.splice(done === -1 ? 0 : done, 1)
+  }
+  return kept
+}
+
+const PR_FIELDS = `number url title state isDraft mergeable reviewDecision
+      commits(last: 1) { nodes { commit { statusCheckRollup { contexts(first: 100) { nodes { __typename ... on CheckRun { name status conclusion detailsUrl } ... on StatusContext { context state targetUrl } } } } } } }
+      reviewThreads(first: 100) { nodes { isResolved comments(last: 1) { nodes { body author { __typename } } } } }`
+
+/** One query for every row, each PR under its own alias. */
+export function boardQuery(rows: readonly { repo: string; number: number }[]): string {
+  const parts = rows.map((r, i) => {
+    const [owner = '', name = ''] = r.repo.split('/')
+    return `  p${i}: repository(owner: ${JSON.stringify(owner)}, name: ${JSON.stringify(name)}) {\n    pullRequest(number: ${r.number}) {\n      ${PR_FIELDS}\n    }\n  }`
+  })
+  return `query {\n${parts.join('\n')}\n}`
+}
+
+export type PrNode = {
+  number: number
+  url: string
+  title: string
+  state: string
+  isDraft: boolean
+  mergeable: string
+  reviewDecision: string | null
+  commits: { nodes: { commit: { statusCheckRollup: { contexts: { nodes: Rollup[] } } | null } }[] }
+  reviewThreads: { nodes: { isResolved: boolean; comments: { nodes: { body: string; author: { __typename: string } | null }[] } }[] }
+}
+
+/** An open thread whose last word is a bot's, or Claude's own reply, isn't waiting on a person. */
+export function seenOf(node: PrNode): Seen {
+  const last = node.reviewThreads.nodes.filter(t => !t.isResolved).map(t => t.comments.nodes.at(-1))
+  const bot = last.filter(c => c === undefined || c.author?.__typename === 'Bot' || isMine(c.body)).length
+  return {
+    title: node.title,
+    state: node.state,
+    mergeable: node.mergeable,
+    isDraft: node.isDraft,
+    reviewDecision: node.reviewDecision,
+    checks: checksOf(node.commits.nodes[0]?.commit.statusCheckRollup?.contexts.nodes ?? []),
+    threads: { human: last.length - bot, bot },
+  }
+}
+
+/** What What's Next's briefing should carry about the tracked PRs. */
+export function boardNote(rows: readonly Tracked[]): string {
+  return [
+    'Ship It also tracks these PRs linked to this session, without acting on them:',
+    ...rows.map(r => `- ${r.url}${r.title !== null ? ` "${r.title}"` : ''}: ${r.kind === null ? 'not looked at yet' : KIND_WORD[r.kind]}`),
+    'List them in the briefing\'s current state.',
+  ].join('\n')
+}
+
+function ago(ms: number): string {
+  const minutes = Math.floor(ms / 60_000)
+  if (minutes < 1) return 'now'
+  if (minutes < 60) return `${minutes}m`
+  const hours = Math.floor(minutes / 60)
+  return hours < 24 ? `${hours}h` : `${Math.floor(hours / 24)}d`
+}
+
+/** One pane row: glyph, number, title, then CI, review, threads and how long since it changed. */
+export function rowText(row: Tracked, now: number, isNew: boolean, columns: number): string {
+  const passed = row.checks.filter(c => c.state === 'pass').length
+  const ci = row.checks.length === 0 ? 'no CI' : `CI ${passed}/${row.checks.length}`
+  const review = row.reviewDecision === 'APPROVED' ? 'approved' : row.reviewDecision === 'CHANGES_REQUESTED' ? 'changes' : row.reviewDecision === 'REVIEW_REQUIRED' ? 'review' : ''
+  const threads = row.threads.human + row.threads.bot === 0 ? '' : `💬 ${row.threads.human}${row.threads.bot > 0 ? ` (+${row.threads.bot} bot)` : ''}`
+  const tail = [row.kind === null ? 'looking…' : ci, review, threads, row.isDraft ? 'draft' : '', ago(now - row.changedAt)].filter(p => p !== '').join('  ')
+  const head = `${isNew ? '•' : ' '} ${glyphOf(row)} #${row.number}  `
+  const room = Math.max(8, columns - head.length - tail.length - 4)
+  const title = row.title ?? row.repo
+  return `${head}${title.length > room ? `${title.slice(0, room - 1)}…` : title.padEnd(room)}  ${tail}`
+}
+
+let boardTimer: { cancel: () => void } | null = null
+let boardPrint = ''
+let boardQuiet = 0
+// The pane's dots mark rows changed since the open before this one; none after a reload.
+let dotsSince = Number.POSITIVE_INFINITY
+// The rows tracked when `/clear` ran, kept until the new session starts.
+let carriedBoard: Board | null = null
+
+async function boardKey($: EngineInterface): Promise<string> {
+  return `board:${await $.session.id()}`
+}
+
+async function changeBoard($: EngineInterface, fn: (b: Board) => Board): Promise<Board> {
+  await update($, board, fn)
+  const now = await read($, board)
+  const key = await boardKey($)
+  await (now.rows.length === 0 ? $.store.delete(key) : $.store.set(key, now))
+  return now
+}
+
+function stopBoard(): void {
+  boardTimer?.cancel()
+  boardTimer = null
+}
+
+function scheduleBoard($: EngineInterface, ms: number): void {
+  stopBoard()
+  boardTimer = $.clock.after(ms, () => void pollBoard($).catch(() => scheduleBoard($, settings.pollMs)))
+}
+
+/** Adds PRs to the board, skipping the one Ship It drives and any already there. How many were new. */
+async function track($: EngineInterface, prs: readonly PrRef[], source: TrackSource): Promise<number> {
+  const s = await read($, ship)
+  // While raising, the branch's new PR is Ship It's own.
+  if (s?.phase === 'raising' && (source === 'session' || source === 'branch')) return 0
+  const driven = s !== null && s.phase !== 'closed' && s.repo !== null ? `${s.repo}#${s.number}` : null
+  const rows = (await read($, board)).rows
+  const fresh = prs.filter(pr => prId(pr) !== driven && !rows.some(r => prId(r) === prId(pr)))
+  if (fresh.length === 0) return 0
+  const at = await $.clock.now()
+  const added: Tracked[] = fresh.map(pr => ({
+    ...pr,
+    title: null,
+    source,
+    kind: null,
+    isDraft: false,
+    checks: [],
+    reviewDecision: null,
+    threads: { human: 0, bot: 0 },
+    addedAt: at,
+    changedAt: at,
+  }))
+  await changeBoard($, b => ({ ...b, rows: capped([...b.rows.filter(r => !added.some(a => prId(a) === prId(r))), ...added]) }))
+  scheduleBoard($, 1)
+  return fresh.length
+}
+
+async function untrack($: EngineInterface, id: string): Promise<boolean> {
+  const had = (await read($, board)).rows.some(r => prId(r) === id)
+  await changeBoard($, b => ({
+    ...b,
+    rows: b.rows.filter(r => prId(r) !== id),
+    selected: b.selected === id ? null : b.selected,
+    ...(b.bannerPr === id ? { banner: null, bannerPr: null } : {}),
+  }))
+  return had
+}
+
+async function pollBoard($: EngineInterface): Promise<void> {
+  const live = (await read($, board)).rows.filter(r => !isDone(r))
+  if (live.length === 0) return
+  const found = (await gh($, ['api', 'graphql', '-f', `query=${boardQuery(live)}`], true)) as { data?: Record<string, { pullRequest: PrNode | null } | null> } | null
+  const data = found?.data
+  if (data == null) return scheduleBoard($, settings.pollMs)
+  const at = await $.clock.now()
+  const looked = new Map<string, Tracked>()
+  const news: { line: string; id: string; kind: PrKind }[] = []
+  // A PR GitHub can't resolve (a wrong number, a private or deleted repo) never will, so it stops being tracked.
+  const lost: Tracked[] = []
+  live.forEach((row, i) => {
+    const node = data[`p${i}`]?.pullRequest
+    if (node == null) return void lost.push(row)
+    const look = seenOf(node)
+    const kind = kindOf(look)
+    const { title, isDraft, checks, reviewDecision, threads } = look
+    const changed = kind !== row.kind || threads.human !== row.threads.human
+    const seen: Tracked = { ...row, title, isDraft, checks, reviewDecision, threads, kind, changedAt: changed ? at : row.changedAt }
+    const line = newsOf(row, seen)
+    if (line !== null) news.push({ line, id: prId(row), kind })
+    looked.set(prId(row), seen)
+  })
+  const now = await changeBoard($, b => ({
+    ...b,
+    rows: b.rows.filter(r => !lost.some(l => prId(l) === prId(r))).map(r => looked.get(prId(r)) ?? r),
+    ...(news.length === 0 ? {} : { banner: news.map(n => n.line).join(' · '), bannerPr: news.length === 1 ? (news[0]?.id ?? null) : null }),
+  }))
+  if (lost.length > 0) $.ui.toast(`🚢 Can't see ${lost.map(r => prId(r)).join(', ')} on GitHub; stopped tracking ${lost.length === 1 ? 'it' : 'them'}`)
+  const loud = news.filter(n => LOUD.includes(n.kind))
+  if (loud.length > 0) await tell($, loud.map(n => n.line).join(' · '))
+
+  const print = JSON.stringify(now.rows.map(r => [prId(r), r.kind, r.threads, r.checks]))
+  boardQuiet = print === boardPrint ? boardQuiet + 1 : 0
+  boardPrint = print
+  if (now.rows.every(isDone)) return stopBoard()
+  // Running CI is about to say something, so it is looked at without backing off.
+  const isRunning = now.rows.some(r => !isDone(r) && r.checks.some(c => c.state === 'pending'))
+  scheduleBoard($, isRunning ? settings.pollMs : settings.pollMs * 2 ** Math.min(boardQuiet, MAX_BACKOFF))
+}
+
+/** After a Bash call: a PR it created or changed, or a push that could move a tracked PR's CI. */
+async function linked($: EngineInterface, done: unknown): Promise<void> {
+  type GitOperation = { pr?: { number: number; url?: string; action: string }; push?: { branch: string } }
+  const op = (done as { result?: { gitOperation?: GitOperation } } | null)?.result?.gitOperation
+  const rows = (await read($, board)).rows
+  if (op?.pr !== undefined) {
+    const { number, url, action } = op.pr
+    const repo = (url !== undefined ? repoOf(url) : null) ?? repoOfRemote((await $.session.repo())?.remote)
+    if (repo === null) return
+    if (rows.some(r => prId(r) === `${repo}#${number}`)) return scheduleBoard($, 1)
+    if (action !== 'merged' && action !== 'closed') await track($, [{ repo, number, url: url ?? `https://github.com/${repo}/pull/${number}` }], 'session')
+    return
+  }
+  if (op?.push !== undefined && rows.some(r => !isDone(r))) scheduleBoard($, AFTER_PUSH_MS)
+}
+
+/** The checked-out branch's open PR, at the start of a session. */
+async function trackBranch($: EngineInterface): Promise<void> {
+  const pr = (await gh($, ['pr', 'view', '--json', 'number,url,state'])) as { number: number; url: string; state: string } | null
+  const repo = pr === null ? null : repoOf(pr.url)
+  if (pr?.state === 'OPEN' && repo !== null) await track($, [{ repo, number: pr.number, url: pr.url }], 'branch')
+}
+
+async function loadBoard($: EngineInterface): Promise<void> {
+  stopBoard()
+  const saved = (await $.store.get(await boardKey($))) as Board | undefined
+  await $.state.set(BOARD, saved ?? EMPTY)
+  if (saved?.rows.some(r => !isDone(r)) === true) scheduleBoard($, 1)
+}
+
+async function openPrs($: EngineInterface): Promise<void> {
+  const at = await $.clock.now()
+  dotsSince = (await read($, board)).seenAt
+  await changeBoard($, b => ({ ...b, seenAt: at }))
+  await $.ui.open({ id: PRS_PANE, title: PRS_TITLE, focus: true, closeOnEscape: true, rows: 14 })
+}
+
+async function openTracked($: EngineInterface, id: string | null): Promise<void> {
+  const row = (await read($, board)).rows.find(r => prId(r) === id)
+  if (row === undefined) return
+  await $.process.run(['gh', 'pr', 'view', String(row.number), '-R', row.repo, '--web']).catch(() => null)
+}
+
+/** Hands a tracked PR to Ship It to see through, when it isn't already driving one. */
+async function promote($: EngineInterface, id: string): Promise<void> {
+  const s = await read($, ship)
+  const row = (await read($, board)).rows.find(r => prId(r) === id)
+  if ((s !== null && s.phase !== 'closed') || row === undefined || isDone(row)) return
+  await begin($, { ...fresh(await $.clock.now()), phase: 'watching', number: row.number, url: row.url, repo: row.repo, turn: null })
+  await untrack($, id)
+  schedule($, 1)
+  await $.ui.close({ id: PRS_PANE }).catch(() => undefined)
+  await openPane($)
 }
 
 // A PR watched when `/clear` ran, kept until the new session starts.
@@ -402,6 +769,7 @@ async function findPr($: EngineInterface): Promise<void> {
   const repo = pr === null ? null : repoOf(pr.url)
   if (pr !== null && pr.state === 'OPEN' && repo !== null) {
     await change($, x => ({ ...x, phase: 'watching', number: pr.number, url: pr.url, repo, turn: null }))
+    await untrack($, `${repo}#${pr.number}`)
     return schedule($, 1)
   }
   const now = await change($, x => ({ ...x, turn: null, raiseTurns: x.raiseTurns + 1 }))
@@ -466,8 +834,14 @@ async function load($: EngineInterface): Promise<void> {
 async function prune($: EngineInterface): Promise<void> {
   const cutoff = (await $.clock.now()) - KEEP_DAYS * 24 * 60 * 60 * 1000
   for (const key of await $.store.keys()) {
-    const s = (await $.store.get(key)) as Ship | undefined
-    if (key.startsWith('ship:') && (s?.at ?? 0) < cutoff) await $.store.delete(key)
+    if (key.startsWith('ship:')) {
+      const s = (await $.store.get(key)) as Ship | undefined
+      if ((s?.at ?? 0) < cutoff) await $.store.delete(key)
+    }
+    if (key.startsWith('board:')) {
+      const b = (await $.store.get(key)) as Board | undefined
+      if (Math.max(0, ...(b?.rows ?? []).map(r => r.changedAt)) < cutoff) await $.store.delete(key)
+    }
   }
 }
 
@@ -505,6 +879,7 @@ export const register: Register = (on, options) => {
 
   on('session.start', async ($, e, next) => {
     await $.command.register({ name: COMMAND, description: '🚢 Raise a PR for this work and see it through to mergeable' })
+    await $.command.register({ name: PRS_COMMAND, description: '🚢 Linked PRs: state, CI and feedback (add or remove <link|#n>)' })
     await $.tool.register({
       name: 'report',
       description: 'Ship It: record what you did about each PR item it handed you, once you have replied and pushed.',
@@ -528,19 +903,34 @@ export const register: Register = (on, options) => {
       },
     })
     void prune($).catch(() => undefined)
-    if (e.isInteractive) void load($).catch(() => undefined)
+    if (e.isInteractive) {
+      void load($)
+        .then(() => loadBoard($))
+        .then(() => trackBranch($))
+        .catch(() => undefined)
+    }
     return next(e)
   })
 
   // `/clear` and `/resume` go on under a new session id and fire no `session.start`. A clear keeps watching the
   // same PR, which is what What's Next's fresh start needs; a resume picks up whatever that session watched.
   on('classic.SessionStart', ($, e, next) => {
-    if (e.source === 'resume') void load($).catch(() => undefined)
+    if (e.source === 'resume') {
+      void load($).catch(() => undefined)
+      void loadBoard($).catch(() => undefined)
+    }
     if (e.source === 'clear' && carried !== null) {
       const s = carried
       carried = null
       void begin($, s)
         .then(() => schedule($, 1))
+        .catch(() => undefined)
+    }
+    if (e.source === 'clear' && carriedBoard !== null) {
+      const b = carriedBoard
+      carriedBoard = null
+      void changeBoard($, () => b)
+        .then(() => scheduleBoard($, 1))
         .catch(() => undefined)
     }
     return next(e)
@@ -553,13 +943,36 @@ export const register: Register = (on, options) => {
       carried = e.reason === 'clear' && s !== null && s.phase !== 'raising' && s.phase !== 'closed' ? { ...s, turn: null } : null
       // A clear moves the watch to the new session; a resume leaves it stored for when this session is resumed.
       await (e.reason === 'clear' ? begin($, null) : $.state.set(SHIP, null)).catch(() => undefined)
+
+      stopBoard()
+      const b = await read($, board).catch(() => EMPTY)
+      carriedBoard = e.reason === 'clear' && b.rows.some(r => !isDone(r)) ? { ...b, rows: b.rows.filter(r => !isDone(r)), banner: null, bannerPr: null } : null
+      await (e.reason === 'clear' ? changeBoard($, () => EMPTY) : $.state.set(BOARD, EMPTY)).catch(() => undefined)
     }
     return next(e)
   })
 
   on('model.fork', async ($, e, next) => {
-    const s = next.origin.plugin === 'whats-next' ? await read($, ship) : null
-    return s === null || s.phase === 'raising' || s.phase === 'closed' ? next(e) : next({ ...e, prompt: `${e.prompt}\n\n${briefingNote(s)}` })
+    if (next.origin.plugin !== 'whats-next') return next(e)
+    const s = await read($, ship)
+    const rows = (await read($, board)).rows.filter(r => !isDone(r))
+    const notes = [
+      ...(s === null || s.phase === 'raising' || s.phase === 'closed' ? [] : [briefingNote(s)]),
+      ...(rows.length === 0 ? [] : [boardNote(rows)]),
+    ]
+    return notes.length === 0 ? next(e) : next({ ...e, prompt: [e.prompt, ...notes].join('\n\n') })
+  })
+
+  on('command.run', { command: PRS_COMMAND }, async ($, e) => {
+    const [verb = '', ...rest] = e.args.trim().split(/\s+/)
+    if (verb === 'add' || verb === 'remove') {
+      const pr = parseRef(rest.join(' '), repoOfRemote((await $.session.repo())?.remote))
+      if (pr === null) return { text: '🚢 Name a PR: a link, owner/name#12 or #12' }
+      if (verb === 'remove') return { text: (await untrack($, prId(pr))) ? `🚢 Stopped tracking #${pr.number}` : `🚢 Not tracking #${pr.number}` }
+      return { text: (await track($, [pr], 'manual')) > 0 ? `🚢 Tracking #${pr.number}` : `🚢 Already on #${pr.number}` }
+    }
+    await openPrs($)
+    return { text: '🚢 Linked PRs' }
   })
 
   on('command.run', { command: COMMAND }, async $ => {
@@ -589,8 +1002,21 @@ export const register: Register = (on, options) => {
   })
 
   on('prompt.submit', ($, e, next) => {
-    if (e.origin.kind !== 'plugin') void change($, x => (x.banner === null ? x : { ...x, banner: null })).catch(() => undefined)
+    if (e.origin.kind !== 'plugin') {
+      void change($, x => (x.banner === null ? x : { ...x, banner: null })).catch(() => undefined)
+      void (async () => {
+        if ((await read($, board)).banner !== null) await changeBoard($, b => ({ ...b, banner: null, bannerPr: null }))
+        const pasted = prsIn(e.text)
+        if (pasted.length > 0) await track($, pasted, 'pasted')
+      })().catch(() => undefined)
+    }
     return next(e)
+  })
+
+  on('tool.call', { tool: 'Bash' }, async ($, e, next) => {
+    const done = await next(e)
+    void linked($, done).catch(() => undefined)
+    return done
   })
 
   on('tool.call', { tool: REPORT }, async ($, e) => {
@@ -617,32 +1043,83 @@ export const register: Register = (on, options) => {
     const below = await next(e)
     const s = await read($, ship)
     const { Box, Button } = $.ui.resolve(e)
-    const mine = <Button key="desk-4-ship-it" plain dimColor label={labelOf(s)} onPress={() => void press($)} />
-    return joinDesk(below, mine, children => (
+    const wrap = (children: RenderNode[]) => (
       <Box key={DESK} flexDirection="row" columnGap={2}>
         {children}
       </Box>
-    ))
+    )
+    const row = joinDesk(below, <Button key="desk-4-ship-it" plain dimColor label={labelOf(s)} onPress={() => void press($)} />, wrap)
+    const chips = trackLabel(await read($, board))
+    return chips === null ? row : joinDesk(row, <Button key="desk-5-ship-it-prs" plain dimColor label={chips} onPress={() => void openPrs($)} />, wrap)
   })
 
   on('ui.render', { component: 'AbovePrompt' }, async ($, e, next) => {
     const s = await read($, ship)
-    if (e.props.hasSurvey || s?.banner == null) return next(e)
+    const b = await read($, board)
+    if (e.props.hasSurvey || (s?.banner == null && b.banner === null)) return next(e)
     const below = await next(e)
     const { Box, Text, Button } = $.ui.resolve(e)
     return (
       <Box flexDirection="column">
         {below}
-        <Box flexDirection="row" flexWrap="wrap" columnGap={2} width={e.props.bodyColumns - MARKER_CELLS}>
-          <Box flexShrink={1}>
-            <Text>🚢 {s.banner}</Text>
+        {s?.banner != null && (
+          <Box flexDirection="row" flexWrap="wrap" columnGap={2} width={e.props.bodyColumns - MARKER_CELLS}>
+            <Box flexShrink={1}>
+              <Text>🚢 {s.banner}</Text>
+            </Box>
+            <Box flexDirection="row" columnGap={2} flexShrink={0}>
+              {s.number !== null && <Button key="band-pr" plain label="Open PR" onPress={() => void openPr($)} />}
+              <Button key="band-details" plain label="Details" onPress={() => void openPane($)} />
+              <Button key="band-dismiss" plain dimColor label="Dismiss" onPress={() => void change($, x => ({ ...x, banner: null }))} />
+            </Box>
           </Box>
-          <Box flexDirection="row" columnGap={2} flexShrink={0}>
-            {s.number !== null && <Button key="band-pr" plain label="Open PR" onPress={() => void openPr($)} />}
-            <Button key="band-details" plain label="Details" onPress={() => void openPane($)} />
-            <Button key="band-dismiss" plain dimColor label="Dismiss" onPress={() => void change($, x => ({ ...x, banner: null }))} />
+        )}
+        {b.banner !== null && (
+          <Box flexDirection="row" flexWrap="wrap" columnGap={2} width={e.props.bodyColumns - MARKER_CELLS}>
+            <Box flexShrink={1}>
+              <Text>🚢 {b.banner}</Text>
+            </Box>
+            <Box flexDirection="row" columnGap={2} flexShrink={0}>
+              {b.bannerPr !== null && <Button key="track-pr" plain label="Open PR" onPress={() => void openTracked($, b.bannerPr)} />}
+              <Button key="track-details" plain label="Details" onPress={() => void openPrs($)} />
+              <Button key="track-dismiss" plain dimColor label="Dismiss" onPress={() => void changeBoard($, x => ({ ...x, banner: null, bannerPr: null }))} />
+            </Box>
           </Box>
-        </Box>
+        )}
+      </Box>
+    )
+  })
+
+  on('ui.render', { component: 'Pane', requestId: PRS_PANE }, async ($, e) => {
+    const s = await read($, ship)
+    const b = await read($, board)
+    const at = await $.clock.now()
+    const { Box, Text, Button } = $.ui.resolve(e)
+    const isDriving = s !== null && s.phase !== 'closed' && s.phase !== 'raising'
+    const chosen = b.rows.find(r => prId(r) === b.selected) ?? b.rows[0]
+    return (
+      <Box flexDirection="column">
+        {isDriving && (
+          <Text dimColor wrap="truncate-end">
+            {'  '}
+            {labelOf(s)} · Ship It is seeing this one through
+          </Text>
+        )}
+        {b.rows.length === 0 && <Text dimColor>No other linked PRs. Paste a PR link, or run /prs add &lt;link|#n&gt;.</Text>}
+        {b.rows.map(r => (
+          <Button key={`row-${prId(r)}`} plain dimColor={r !== chosen} onPress={() => void changeBoard($, x => ({ ...x, selected: prId(r) }))}>
+            {rowText(r, at, r.changedAt > dotsSince, e.props.bodyColumns)}
+          </Button>
+        ))}
+        {chosen !== undefined && (
+          <Box flexDirection="row" columnGap={2} marginTop={1}>
+            <Text dimColor>#{chosen.number}:</Text>
+            <Button key="prs-open" hotkey="o" plain label="Open" autoFocus onPress={() => void openTracked($, prId(chosen))} />
+            {!isDriving && !isDone(chosen) && <Button key="prs-ship" hotkey="s" plain label="Ship it" onPress={() => void promote($, prId(chosen))} />}
+            <Button key="prs-untrack" hotkey="x" plain label="Untrack" onPress={() => void untrack($, prId(chosen))} />
+            <Button key="prs-refresh" hotkey="r" plain label="Refresh" onPress={() => scheduleBoard($, 1)} />
+          </Box>
+        )}
       </Box>
     )
   })
