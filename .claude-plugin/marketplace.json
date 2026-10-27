@@ -4,7 +4,7 @@
     "name": "Lorcan Chinnock",
     "url": "https://github.com/LorcanChinnock/claude-desk-neighbours"
   },
-  "description": "Small Claude Code mods that sit under your prompt: flag unanswered questions, show your work and see your PR through.",
+  "description": "Small Claude Code mods that sit under your prompt: flag unanswered questions, show your work, see your PR through and learn from each session.",
   "metadata": {
     "pluginRoot": "./plugins"
   },
@@ -28,6 +28,11 @@
       "name": "ship-it",
       "source": "ship-it",
       "description": "🚢 One press raises a PR for the session's work, then watches CI and reviews and works through the feedback until it's ready to merge. Tracks every other PR the session links, too."
+    },
+    {
+      "name": "reflect",
+      "source": "reflect",
+      "description": "🪞 A button that has Claude look back over the session and update its memory, CLAUDE.md, docs and skills with what's worth keeping."
     }
   ]
 }

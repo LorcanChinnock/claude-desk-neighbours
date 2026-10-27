@@ -12,12 +12,13 @@
   <a href="#-your-serve">🎾 Your Serve</a> ·
   <a href="#-show--tell">📸 Show & Tell</a> ·
   <a href="#️-whats-next">⏭️ What's Next</a> ·
-  <a href="#-ship-it">🚢 Ship It</a>
+  <a href="#-ship-it">🚢 Ship It</a> ·
+  <a href="#-reflect">🪞 Reflect</a>
 </p>
 
 Claude Code does the actual work well. It's the stuff around the work that slips. It asks you something in the
 last line of a long reply. The screenshot you pasted three prompts ago is just `[Image #1]`. The session gets so
-long that the context fills up. The PR waits on a review comment you haven't seen. **Desk Neighbours** are four small mods for that kind of thing. They sit in a status row under your prompt and only pipe up, in a
+long that the context fills up. The PR waits on a review comment you haven't seen. What the session taught Claude is gone when it ends. **Desk Neighbours** are five small mods for that kind of thing. They sit in a status row under your prompt and only pipe up, in a
 single line above it, when there's something worth saying.
 
 ```
@@ -31,6 +32,7 @@ Then install whichever ones you want. They each work on their own, and play nice
 /plugin install show-and-tell@claude-desk-neighbours
 /plugin install whats-next@claude-desk-neighbours
 /plugin install ship-it@claude-desk-neighbours
+/plugin install reflect@claude-desk-neighbours
 ```
 
 ---
@@ -93,11 +95,24 @@ Then install whichever ones you want. They each work on their own, and play nice
 
 [Everything Ship It does →](plugins/ship-it)
 
+## 🪞 Reflect
+
+**One press has Claude look back over the session and write down what's worth keeping, so the next one starts smarter.**
+
+- Click `🪞 reflect` in the status row, or run `/reflect`, and Claude goes back over the conversation for your
+  corrections, its own mistakes, things it had to dig for and approaches that worked.
+- It puts each finding in the one place it belongs: its memory, the project's `CLAUDE.md`, the docs, or a skill.
+  It skips what the repo already records, and keeps instruction files short.
+- It never edits your user-level `CLAUDE.md` or settings without asking first. It ends with a list of what it
+  changed and where.
+
+[Everything Reflect does →](plugins/reflect)
+
 ---
 
 ## How they work together
 
-Your Serve, What's Next and Ship It each add an item to the status row under the prompt, always in that order.
+Your Serve, What's Next, Ship It and Reflect each add an item to the status row under the prompt, always in that order.
 Show & Tell has no status-row item: run `/gallery`, or click `Gallery` in its band, to open its pane; Esc closes
 it. What's Next's review pane and Ship It's pane open the same way and close with Esc too.
 
@@ -105,7 +120,7 @@ If What's Next starts a fresh session while Ship It is watching a PR, the briefi
 it, and Ship It carries on watching in the new session. The same goes for the other PRs it tracks.
 
 ```
-? for shortcuts   🎾 your serve   ⏭️ whats next   🚢 #46 · CI ⏳   #51 ❌ · #53 ✅
+? for shortcuts   🎾 your serve   ⏭️ whats next   🚢 #46 · CI ⏳   #51 ❌ · #53 ✅   🪞 reflect
 ```
 
 When a neighbour has something to tell you, it gets a line in the band above the prompt. Long lines wrap instead
@@ -131,7 +146,9 @@ Here's what goes on behind the scenes, so you know before you install:
 
 - **Model calls.** Your Serve's press starts a normal turn on your session's model. What's Next writes its
   briefing with one call on your session's model, over the same conversation, so most of it comes from the prompt
-  cache. Each Ship It round starts a normal turn on your session's model. Show & Tell makes no model calls.
+  cache. Each Ship It round starts a normal turn on your session's model. Reflect's press starts a normal turn too, and
+  Claude then edits your memory, project `CLAUDE.md`, docs and skills with its usual file tools. Show & Tell makes no
+  model calls.
 - **Files on disk.** Show & Tell keeps copies of pasted and tool images in `~/.claude/show-and-tell/`, and uses
   `cp`, `sips` or `magick` to copy and convert them. It deletes files older than seven days when a session starts
   (macOS and Linux).
