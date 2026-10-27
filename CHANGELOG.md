@@ -1,5 +1,17 @@
 # Changelog
 
+## [4.0.0](https://github.com/LorcanChinnock/claude-desk-neighbours/compare/v3.3.0...v4.0.0) (2026-10-27)
+
+
+### ⚠ BREAKING CHANGES
+
+* **ship-it:** remove the ship-it plugin ([#62](https://github.com/LorcanChinnock/claude-desk-neighbours/issues/62))
+
+### Features
+
+* **reflect:** add a button that has Claude reflect on the session ([#61](https://github.com/LorcanChinnock/claude-desk-neighbours/issues/61)) ([2b645d9](https://github.com/LorcanChinnock/claude-desk-neighbours/commit/2b645d92f63be9f4976acf1539546e5a71810727))
+* **ship-it:** remove the ship-it plugin ([#62](https://github.com/LorcanChinnock/claude-desk-neighbours/issues/62)) ([b4fc9f8](https://github.com/LorcanChinnock/claude-desk-neighbours/commit/b4fc9f8bb5f2140d5af59bca2184ef666b3a860a))
+
 ## [3.3.0](https://github.com/LorcanChinnock/claude-desk-neighbours/compare/v3.2.0...v3.3.0) (2026-10-22)
 
 
