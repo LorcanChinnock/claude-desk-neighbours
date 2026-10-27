@@ -10,7 +10,8 @@
         { "type": "json", "path": "plugins/ship-it/.claude-plugin/plugin.json", "jsonpath": "$.version" },
         { "type": "json", "path": "plugins/show-and-tell/.claude-plugin/plugin.json", "jsonpath": "$.version" },
         { "type": "json", "path": "plugins/your-serve/.claude-plugin/plugin.json", "jsonpath": "$.version" },
-        { "type": "json", "path": "plugins/whats-next/.claude-plugin/plugin.json", "jsonpath": "$.version" }
+        { "type": "json", "path": "plugins/whats-next/.claude-plugin/plugin.json", "jsonpath": "$.version" },
+        { "type": "json", "path": "plugins/reflect/.claude-plugin/plugin.json", "jsonpath": "$.version" }
       ]
     }
   }
