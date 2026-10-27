@@ -12,13 +12,12 @@
   <a href="#-your-serve">🎾 Your Serve</a> ·
   <a href="#-show--tell">📸 Show & Tell</a> ·
   <a href="#️-whats-next">⏭️ What's Next</a> ·
-  <a href="#-ship-it">🚢 Ship It</a> ·
   <a href="#-reflect">🪞 Reflect</a>
 </p>
 
 Claude Code does the actual work well. It's the stuff around the work that slips. It asks you something in the
 last line of a long reply. The screenshot you pasted three prompts ago is just `[Image #1]`. The session gets so
-long that the context fills up. The PR waits on a review comment you haven't seen. What the session taught Claude is gone when it ends. **Desk Neighbours** are five small mods for that kind of thing. They sit in a status row under your prompt and only pipe up, in a
+long that the context fills up. What the session taught Claude is gone when it ends. **Desk Neighbours** are four small mods for that kind of thing. They sit in a status row under your prompt and only pipe up, in a
 single line above it, when there's something worth saying.
 
 ```
@@ -31,7 +30,6 @@ Then install whichever ones you want. They each work on their own, and play nice
 /plugin install your-serve@claude-desk-neighbours
 /plugin install show-and-tell@claude-desk-neighbours
 /plugin install whats-next@claude-desk-neighbours
-/plugin install ship-it@claude-desk-neighbours
 /plugin install reflect@claude-desk-neighbours
 ```
 
@@ -79,22 +77,6 @@ Then install whichever ones you want. They each work on their own, and play nice
 
 [Everything What's Next does →](plugins/whats-next)
 
-## 🚢 Ship It
-
-**One press raises a PR for the session's work, then sees it through to ready-to-merge.**
-
-- Click `🚢 ship it` in the status row, or run `/ship-it`, and Claude commits the files it changed, pushes and
-  opens the PR, asking first.
-- Ship It then watches CI and reviews. When feedback comes in, Claude works through it critically: it fixes what's
-  right, pushes back on what isn't, replies on every thread and resolves the ones it fixed.
-- The status row shows the PR's state (`🚢 #46 · CI ⏳`), and a notification says when it's ready to merge. It
-  never merges unless you turn that on.
-- Every other PR the session links (one Claude opens, a link you paste, the branch's PR, or `/prs add`) gets a
-  glyph in the status row for whose move it is (`#51 ❌ · #53 ✅`), and a line above the prompt when one needs
-  you. `/prs` lists them all with CI, reviews and open threads.
-
-[Everything Ship It does →](plugins/ship-it)
-
 ## 🪞 Reflect
 
 **One press has Claude look back over the session and write down what's worth keeping, so the next one starts smarter.**
@@ -112,15 +94,12 @@ Then install whichever ones you want. They each work on their own, and play nice
 
 ## How they work together
 
-Your Serve, What's Next, Ship It and Reflect each add an item to the status row under the prompt, always in that order.
+Your Serve, What's Next and Reflect each add an item to the status row under the prompt, always in that order.
 Show & Tell has no status-row item: run `/gallery`, or click `Gallery` in its band, to open its pane; Esc closes
-it. What's Next's review pane and Ship It's pane open the same way and close with Esc too.
-
-If What's Next starts a fresh session while Ship It is watching a PR, the briefing names the PR and what's open on
-it, and Ship It carries on watching in the new session. The same goes for the other PRs it tracks.
+it. What's Next's review pane opens the same way and closes with Esc too.
 
 ```
-? for shortcuts   🎾 your serve   ⏭️ whats next   🚢 #46 · CI ⏳   #51 ❌ · #53 ✅   🪞 reflect
+? for shortcuts   🎾 your serve   ⏭️ whats next   🪞 reflect
 ```
 
 When a neighbour has something to tell you, it gets a line in the band above the prompt. Long lines wrap instead
@@ -135,10 +114,6 @@ You can change these in `/config`, or with `/plugin configure <plugin>@claude-de
 |---|---|---|
 | `show-and-tell` | Keep new thumbnails above the prompt for (seconds) | 20 |
 | `whats-next` | Offer a fresh start when the context is this full (%, 0 turns it off) | 70 |
-| `ship-it` | Confirm before pushing and replying | on |
-| `ship-it` | Check the PR every (seconds) | 60 |
-| `ship-it` | Automatic rounds per PR | 5 |
-| `ship-it` | Merge when ready | off |
 
 ## What runs in the background
 
@@ -146,16 +121,12 @@ Here's what goes on behind the scenes, so you know before you install:
 
 - **Model calls.** Your Serve's press starts a normal turn on your session's model. What's Next writes its
   briefing with one call on your session's model, over the same conversation, so most of it comes from the prompt
-  cache. Each Ship It round starts a normal turn on your session's model. Reflect's press starts a normal turn too, and
+  cache. Reflect's press starts a normal turn too, and
   Claude then edits your memory, project `CLAUDE.md`, docs and skills with its usual file tools. Show & Tell makes no
   model calls.
 - **Files on disk.** Show & Tell keeps copies of pasted and tool images in `~/.claude/show-and-tell/`, and uses
   `cp`, `sips` or `magick` to copy and convert them. It deletes files older than seven days when a session starts
   (macOS and Linux).
-- **GitHub, through `gh`.** While Ship It watches a PR it polls it with `gh` (every minute, less often when
-  nothing changes), and Claude's replies are posted with your `gh` login. Other PRs linked to the session are
-  polled together in one `gh api graphql` call on the same schedule. It keeps them in its plugin store so
-  `/resume` picks them back up.
 - Nothing is sent anywhere else.
 
 ## Requirements
