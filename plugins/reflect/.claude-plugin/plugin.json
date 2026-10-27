@@ -1,6 +1,6 @@
 {
   "name": "reflect",
-  "version": "3.3.0",
+  "version": "4.0.0",
   "description": "🪞 A button that has Claude look back over the session and update its memory, CLAUDE.md, docs and skills with what's worth keeping.",
   "author": {
     "name": "Lorcan Chinnock",
