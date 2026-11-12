@@ -1,5 +1,12 @@
 # Changelog
 
+## [4.0.1](https://github.com/LorcanChinnock/claude-desk-neighbours/compare/v4.0.0...v4.0.1) (2026-11-12)
+
+
+### Bug Fixes
+
+* **show-and-tell:** reload the gallery after /clear even if the start event is swallowed ([#67](https://github.com/LorcanChinnock/claude-desk-neighbours/issues/67)) ([128d14d](https://github.com/LorcanChinnock/claude-desk-neighbours/commit/128d14d8aa53f51ee30f44ba12853496a5de6d3b))
+
 ## [4.0.0](https://github.com/LorcanChinnock/claude-desk-neighbours/compare/v3.3.0...v4.0.0) (2026-10-27)
 
 
