@@ -306,6 +306,23 @@ for (const source of ['clear', 'resume'] as const) {
   })
 }
 
+test('after /clear the gallery loads again when the start event never reaches the plugin', async ($, on) => {
+  const w = world(on)
+  on('session.end', () => ({ sessionId: 'sess-1' }))
+  // A managed hook above the plugin can answer the classic start event itself, so none is sent here.
+  const shot = { id: 'kept', source: 'you', label: 'kept', path: `${STORE}/a.png`, thumb: `${STORE}/a.png`, width: 200, height: 120, at: 1 }
+  w.files.set(`${STORE}/a.png`, { base64: PNG, mtimeMs: 1 })
+  await start($)
+  await w.clock.settle()
+  await $.session.end({ reason: 'clear' })
+  w.texts.set(`${STORE}/manifest.json`, JSON.stringify([shot]))
+  await w.clock.advance(500)
+  await w.clock.settle()
+  const pane = await $.ui.mount({ plugin: 'show-and-tell', surface: 'terminal', component: 'Pane', requestId: 'show-and-tell', props: PANE_PROPS })
+  const found = (await pane.findAll({ type: 'Button' })).map(b => b.text).filter(t => /kept/.test(t))
+  expect(found).toEqual([expect.stringMatching(/📎 kept · 200×120$/)])
+})
+
 test('a picture Claude makes and then reads stays one Claude made, listed once', async ($, on) => {
   const w = world(on)
   on('tool.call', { tool: 'Bash' }, () => {

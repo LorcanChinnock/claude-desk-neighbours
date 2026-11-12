@@ -259,6 +259,16 @@ async function loadManifest($: EngineInterface): Promise<void> {
   await $.state.set(SHOTS, kept)
 }
 
+let loadedFor: string | null = null
+
+/** Loads this session's gallery once. Every caller can ask: the first to see a new session id does the work. */
+async function ensureLoaded($: EngineInterface): Promise<void> {
+  const id = await $.session.id()
+  if (id === loadedFor) return
+  loadedFor = id
+  await loadManifest($)
+}
+
 async function addShot($: EngineInterface, shot: Shot, isFresh: boolean): Promise<void> {
   await update($, shots, list => {
     const same = (s: Shot) => s.id === shot.id || (shot.source !== 'you' && s.source !== 'you' && s.path === shot.path)
@@ -368,6 +378,8 @@ async function poll($: EngineInterface): Promise<void> {
   if (isPolling) return
   isPolling = true
   try {
+    // After `/clear` or `/resume` no start event may reach this plugin, so the timer notices the new session.
+    await ensureLoaded($)
     const now = imageNumbers((await $.prompt.read()).text)
     const added = now.filter(n => !seen.includes(n))
     const gone = seen.filter(n => !now.includes(n))
@@ -427,6 +439,7 @@ async function expirePastes($: EngineInterface, numbers: readonly number[]): Pro
 async function reset($: EngineInterface): Promise<void> {
   seen = []
   submitted = []
+  loadedFor = null
   await $.state.set(SHOTS, [])
   await $.state.set(FRESH, [])
   await $.state.set(PICKED, null)
@@ -460,7 +473,7 @@ export const register: Register = (on, options) => {
 
   on('session.start', async ($, e, next) => {
     await $.command.register({ name: 'gallery', description: '📸 Every image you and Claude passed around this session' })
-    void loadManifest($).catch(() => undefined)
+    void ensureLoaded($).catch(() => undefined)
     void prune($).catch(() => undefined)
     if (e.isInteractive) $.clock.every(POLL_MS, () => void poll($).catch(() => undefined))
     return next(e)
@@ -532,10 +545,11 @@ export const register: Register = (on, options) => {
     return done
   })
 
-  // `/clear` and `/resume` go on under a new session with empty state and fire no `session.start`;
-  // their classic SessionStart (source `clear` or `resume`) is the one place to load the gallery again.
+  // `/clear` and `/resume` go on under a new session with empty state and fire no `session.start`.
+  // The classic SessionStart can be answered above this plugin by a managed hook, so it is only a
+  // faster path; the poll timer (`poll`) is the one that always reloads the gallery.
   on('classic.SessionStart', ($, e, next) => {
-    if (e.source === 'clear' || e.source === 'resume') void loadManifest($).catch(() => undefined)
+    if (e.source === 'clear' || e.source === 'resume') void ensureLoaded($).catch(() => undefined)
     return next(e)
   })
 
