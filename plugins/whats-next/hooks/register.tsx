@@ -44,6 +44,20 @@ export function briefingAsk(focus: string): string {
   ].join('\n')
 }
 
+// Second ask, once the first finds nothing left: the same job a person does by typing "what's next?" at the end of a session.
+export function followUpAsk(): string {
+  return [
+    'I am about to clear this conversation and start the next task in a fresh session that will see none of it.',
+    'Everything I asked for in this conversation is done, so there is no task waiting. Suggest the single most useful extra task instead.',
+    'Look for: loose ends and TODOs left in the work, things that were deferred or skipped, gaps in testing or verification, docs or config that should change with it, related places with the same problem, and a cleanup or improvement the work showed up.',
+    'Pick the one with the best payoff for the effort. Do not repeat anything already done.',
+    `If you honestly find nothing worth doing, reply with exactly ${NOTHING_LEFT} and nothing else.`,
+    "Otherwise start with one line, 'Suggested because:', saying why this is worth doing, so I can judge it before I start. Then give the briefing:",
+    ...BRIEFING_SHAPE.slice(1),
+    'Never refer to "above", "earlier", "as discussed" or [Image #N]: state the facts, and give a file path for anything the new session must look at.',
+  ].join('\n')
+}
+
 // A blank session has no conversation to fork, so the next task comes from the repository and GitHub instead.
 export const RESEARCH: readonly { label: string; argv: readonly string[] }[] = [
   { label: 'git status', argv: ['git', 'status', '--short', '--branch'] },
@@ -81,6 +95,10 @@ async function research($: EngineInterface): Promise<string> {
 
 async function ask($: EngineInterface, focus: string): Promise<ModelForkResult> {
   const reply = await $.model.fork({ prompt: briefingAsk(focus) })
+  if (reply.isAnswered && focus === '' && reply.text.trim() === NOTHING_LEFT) {
+    $.ui.toast('⏭️ Nothing left on the list. Looking for extra tasks')
+    return $.model.fork({ prompt: followUpAsk() })
+  }
   if (reply.isAnswered || reply.reason !== 'nothing-to-fork') return reply
   $.ui.toast('⏭️ Looking at the repo and GitHub for the next task')
   return $.model.complete({ model: await $.session.model(), prompt: researchAsk(focus, await research($)), maxTokens: 4096 })

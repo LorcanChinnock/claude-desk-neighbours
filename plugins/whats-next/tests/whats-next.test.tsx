@@ -2,7 +2,7 @@ import { expect, mock, test } from 'claude-code/testing'
 import type { ModelForkResult, On } from 'claude-code'
 import type { Engine } from 'claude-code/testing'
 
-import { NOTHING_LEFT, RESEARCH, briefingAsk, researchAsk } from '../hooks/register'
+import { NOTHING_LEFT, RESEARCH, briefingAsk, followUpAsk, researchAsk } from '../hooks/register'
 
 const BRIEFING = 'Goal: add the auth tests in src/auth.test.ts. Verify with npm test.'
 
@@ -24,6 +24,7 @@ type World = {
   percent: number | undefined
   sessionId: string
   forkReply: ModelForkResult | null
+  forkReplies: ModelForkResult[]
   isModelDown: boolean
   forks: string[]
   completes: { model: string; prompt: string }[]
@@ -47,6 +48,7 @@ function world(on: On): World {
     percent: undefined,
     sessionId: 'sess-1',
     forkReply: null,
+    forkReplies: [],
     isModelDown: false,
     forks: [],
     completes: [],
@@ -67,7 +69,7 @@ function world(on: On): World {
   on('session.usage', () => ({ value: { startedAt: 0, context: { window: 200_000, percent: w.percent }, rateLimits: [] } }))
   on('model.fork', ($, e) => {
     w.forks.push(e.prompt)
-    return { value: w.forkReply ?? w.reply }
+    return { value: w.forkReplies.shift() ?? w.forkReply ?? w.reply }
   })
   on('session.model', () => {
     if (w.isModelDown) throw new Error('model unavailable')
@@ -231,13 +233,41 @@ test('Cancel closes the pane and drops the briefing, leaving the session as it w
   expect(await pane.find({ type: 'Text', text: /No briefing yet/ })).toBeDefined()
 })
 
-test('it says so in one line when nothing is left', async ($, on) => {
+const usage = { input_tokens: 1, output_tokens: 1, cache_read_input_tokens: 0, cache_creation_input_tokens: 0 }
+const nothingLeft: ModelForkResult = { isAnswered: true, text: ` ${NOTHING_LEFT}\n`, usage }
+
+test('when the list is empty it asks for extra tasks and opens the suggestion for review', async ($, on) => {
   const w = world(on)
-  w.reply = { isAnswered: true, text: ` ${NOTHING_LEFT}\n`, usage: { input_tokens: 1, output_tokens: 1, cache_read_input_tokens: 0, cache_creation_input_tokens: 0 } }
+  const suggestion = 'Suggested because: the retry path has no test.\nGoal: cover it in src/retry.test.ts.'
+  w.forkReplies = [nothingLeft, { isAnswered: true, text: suggestion, usage }]
   const hint = await $.ui.mount({ plugin: 'whats-next', surface: 'terminal', ...HINT })
   await hint.press({ key: 'desk-3-whats-next' })
+  expect(w.forks).toEqual([briefingAsk(''), followUpAsk()])
+  expect(w.toasts).toEqual(['⏭️ Nothing left on the list. Looking for extra tasks'])
+  expect(w.opened).toEqual(['whats-next'])
+  expect(w.logs).toEqual([])
+  const pane = await $.ui.mount({ plugin: 'whats-next', surface: 'terminal', ...PANE })
+  expect(await pane.find({ type: 'Text', text: suggestion })).toBeDefined()
+})
+
+test('it says so in one line when the extra-task ask finds nothing either', async ($, on) => {
+  const w = world(on)
+  w.forkReply = nothingLeft
+  const hint = await $.ui.mount({ plugin: 'whats-next', surface: 'terminal', ...HINT })
+  await hint.press({ key: 'desk-3-whats-next' })
+  expect(w.forks).toEqual([briefingAsk(''), followUpAsk()])
   expect(w.logs).toEqual(['⏭️ Nothing left to do'])
   expect(w.opened).toEqual([])
+})
+
+test('a named focus is not second-guessed with extra tasks', async ($, on) => {
+  const w = world(on)
+  w.forkReply = nothingLeft
+  await $.command.run({ command: 'whats-next', args: 'the auth tests', origin: { kind: 'composer' }, presentation: { isFullscreen: false, columns: 100 } })
+  await w.clock.advance(1)
+  await w.clock.settle()
+  expect(w.forks).toEqual([briefingAsk('the auth tests')])
+  expect(w.logs).toEqual(['⏭️ Nothing left to do'])
 })
 
 test('a blank session works out the next task from the repo and GitHub instead', async ($, on) => {
@@ -360,6 +390,15 @@ test('the ask forbids pointing back at the old conversation', () => {
   const ask = briefingAsk('')
   expect(ask).toContain('[Image #N]')
   expect(ask).toContain(NOTHING_LEFT)
+  expect(ask).toContain('How to verify')
+})
+
+test('the extra-task ask looks for loose ends, wants a reason, and avoids repeats', () => {
+  const ask = followUpAsk()
+  expect(ask).toContain(NOTHING_LEFT)
+  expect(ask).toContain('Suggested because:')
+  expect(ask).toContain('Do not repeat anything already done')
+  expect(ask).toContain('[Image #N]')
   expect(ask).toContain('How to verify')
 })
 

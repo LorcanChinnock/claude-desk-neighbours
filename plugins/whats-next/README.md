@@ -30,7 +30,12 @@ The briefing opens in a pane:
 After a clear, the first row of the new conversation says which session it continued from, so you can `/resume`
 the old one if the briefing missed something.
 
-If nothing is left to do, What's Next says so in one line and doesn't open the pane.
+If everything you asked for is done, What's Next doesn't stop there. It asks Claude what else is worth doing, the way
+you would by typing "what's next?", and looks for loose ends, skipped or deferred work, gaps in testing, docs that
+should change with it, and cleanups the work showed up. The suggestion opens in the same pane, starting with a
+`Suggested because:` line so you can judge it before you start. Cancel if you don't want it. If there's still
+nothing worth doing, it says so in one line and doesn't open the pane. A focus you name (`/whats-next the auth tests`)
+is taken as given, so it's never second-guessed with extra tasks.
 
 In a terminal too narrow to open the pane by itself, the band above the prompt says `⏭️ The briefing is ready.` with
 `Open` and `Discard` buttons.
@@ -42,7 +47,7 @@ button. It shows once per session. You can change the threshold in `/config`, or
 
 ## In the background
 
-Each briefing is one model call on your session's own model. It runs over the same conversation the main thread
+Each briefing is one model call on your session's own model (a second one when the first finds nothing left). It runs over the same conversation the main thread
 last sent, so most of it is served from the prompt cache. It has no tools. In a fresh session it runs the `git` and
 `gh` commands above first, then makes one call with what they printed. After a turn ends, What's Next reads the
 context fill the status line already has, which costs nothing. It keeps nothing between sessions.
