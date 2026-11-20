@@ -1,5 +1,12 @@
 # Changelog
 
+## [4.1.0](https://github.com/LorcanChinnock/claude-desk-neighbours/compare/v4.0.1...v4.1.0) (2026-11-20)
+
+
+### Features
+
+* **whats-next:** ask for extra tasks when nothing is left ([#70](https://github.com/LorcanChinnock/claude-desk-neighbours/issues/70)) ([5f92829](https://github.com/LorcanChinnock/claude-desk-neighbours/commit/5f928290fd55787df7d0560844bd48faa0706e5a))
+
 ## [4.0.1](https://github.com/LorcanChinnock/claude-desk-neighbours/compare/v4.0.0...v4.0.1) (2026-11-12)
 
 
