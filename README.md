@@ -59,7 +59,8 @@ Then install whichever ones you want. They each work on their own, and play nice
 - `/gallery` lists them all, newest first, with a big preview. From there you can open one, put `@path` in your
   prompt, copy its path or show it in its folder.
 - Pictures only render in terminals that support the kitty graphics protocol, like Ghostty and kitty. Other
-  terminals, tmux and the desktop app show the same rows as text.
+  terminals and tmux show the same rows as text. It does nothing in the Claude desktop app, which previews
+  pictures itself.
 
 [Everything Show & Tell does →](plugins/show-and-tell)
 

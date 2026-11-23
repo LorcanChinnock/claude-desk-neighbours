@@ -468,10 +468,17 @@ function sizeText(shot: Shot): string {
 
 const SOURCE_WORD: Record<ShotSource, string> = { you: 'you pasted', 'claude-read': 'Claude looked at', 'claude-made': 'Claude made' }
 
+// Show & Tell is for the terminal. Claude desktop and the IDE extensions already preview images
+// themselves, so on any other surface the plugin stands down: no command, no timer, no copies.
+// It stays on until a session says otherwise, in case the session start event never reaches it.
+let enabled = true
+
 export const register: Register = (on, options) => {
   bandMs = Number(options.bandSeconds ?? 20) * 1000
 
   on('session.start', async ($, e, next) => {
+    enabled = e.surface === 'terminal'
+    if (!enabled) return next(e)
     await $.command.register({ name: 'gallery', description: '📸 Every image you and Claude passed around this session' })
     void ensureLoaded($).catch(() => undefined)
     void prune($).catch(() => undefined)
@@ -485,6 +492,7 @@ export const register: Register = (on, options) => {
   })
 
   on('prompt.submit', ($, e, next) => {
+    if (!enabled) return next(e)
     sending = imageNumbers(e.text)
     submitted = [...submitted, ...sending]
     void expirePastes($, sending).catch(() => undefined)
@@ -494,6 +502,7 @@ export const register: Register = (on, options) => {
   // The image bytes first reach a plugin here, as the prompt or a tool's result is stored. The row
   // passes on untouched; what it carries is copied out beside it.
   on('session.append', { door: 'prompt' }, ($, e, next) => {
+    if (!enabled) return next(e)
     const images = imagesIn(e.message.content)
     if (images.length > 0) {
       const numbers = sending
@@ -504,6 +513,7 @@ export const register: Register = (on, options) => {
   })
 
   on('session.append', { door: 'tool-result' }, ($, e, next) => {
+    if (!enabled) return next(e)
     // A Read keeps the file it read (below); every other tool's picture exists only here.
     const tool = e.origin.kind === 'tool' && 'tool' in e.origin ? e.origin.tool : null
     if (tool !== null && tool !== 'Read') {
@@ -515,6 +525,7 @@ export const register: Register = (on, options) => {
   })
 
   on('tool.call', { tool: 'Read' }, async ($, e, next) => {
+    if (!enabled) return next(e)
     const done = await next(e)
     if (done.deny === undefined && done.isError !== true && PICTURE.test(e.file_path)) {
       void keepFile($, e.file_path, 'claude-read').catch(() => undefined)
@@ -523,6 +534,7 @@ export const register: Register = (on, options) => {
   })
 
   on('tool.call', { tool: 'Write' }, async ($, e, next) => {
+    if (!enabled) return next(e)
     const done = await next(e)
     if (done.deny === undefined && done.isError !== true && PICTURE.test(e.file_path)) {
       void keepFile($, e.file_path, 'claude-made').catch(() => undefined)
@@ -531,6 +543,7 @@ export const register: Register = (on, options) => {
   })
 
   on('tool.call', { tool: 'Edit' }, async ($, e, next) => {
+    if (!enabled) return next(e)
     const done = await next(e)
     if (done.deny === undefined && done.isError !== true && PICTURE.test(e.file_path)) {
       void keepFile($, e.file_path, 'claude-made').catch(() => undefined)
@@ -539,6 +552,7 @@ export const register: Register = (on, options) => {
   })
 
   on('tool.call', { tool: 'Bash' }, async ($, e, next) => {
+    if (!enabled) return next(e)
     const since = await $.clock.now()
     const done = await next(e)
     if (done.deny === undefined) void scanMade($, since).catch(() => undefined)
@@ -549,6 +563,7 @@ export const register: Register = (on, options) => {
   // The classic SessionStart can be answered above this plugin by a managed hook, so it is only a
   // faster path; the poll timer (`poll`) is the one that always reloads the gallery.
   on('classic.SessionStart', ($, e, next) => {
+    if (!enabled) return next(e)
     if (e.source === 'clear' || e.source === 'resume') void ensureLoaded($).catch(() => undefined)
     return next(e)
   })
@@ -559,7 +574,7 @@ export const register: Register = (on, options) => {
   })
 
   on('ui.render', { component: 'AbovePrompt' }, async ($, e, next) => {
-    if (e.props.hasSurvey) return next(e)
+    if (!enabled || e.props.hasSurvey) return next(e)
     const ids = await read($, fresh)
     const list = await read($, shots)
     const showing = ids.map(id => list.find(s => s.id === id)).filter((s): s is Shot => s !== undefined)

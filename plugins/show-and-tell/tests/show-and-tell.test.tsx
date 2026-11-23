@@ -25,12 +25,13 @@ type World = {
   files: Map<string, { base64: string; mtimeMs: number }>
   texts: Map<string, string>
   ran: string[][]
+  registered: string[]
   box: { text: string }
   clipboard: string | null
 }
 
 function world(on: On): World {
-  const w: World = { clock: mock.clock(on, { now: 1_000 }), files: new Map(), texts: new Map(), ran: [], box: { text: '' }, clipboard: null }
+  const w: World = { clock: mock.clock(on, { now: 1_000 }), files: new Map(), texts: new Map(), ran: [], registered: [], box: { text: '' }, clipboard: null }
   mock.store(on)
   mock.env(on, { HOME })
   on('session.id', () => ({ value: 'sess-1' }))
@@ -100,7 +101,10 @@ function world(on: On): World {
   })
   on('prompt.submit', ($, e) => ({ text: e.text }))
   on('session.start', ($, e) => ({ cwd: e.cwd }))
-  on('command.register', ($, e) => ({ value: { command: e.name } }))
+  on('command.register', ($, e) => {
+    w.registered.push(e.name)
+    return { value: { command: e.name } }
+  })
   on('ui.panes', () => ({ value: [] }))
   on('ui.close', () => ({ value: undefined }))
   on('ui.render', ($, e) => {
@@ -219,6 +223,21 @@ test('the band says it in words on a surface with no pictures, and goes after it
   expect(opened).toEqual([24])
   await $.prompt.submit({ text: '[Image #1]', wait: false, origin: { kind: 'composer' } })
   await w.clock.advance(20_000)
+  expect(await band.find({ key: 'band-gallery' })).toBeUndefined()
+})
+
+test('it stands down on the desktop app, which previews pictures itself', async ($, on) => {
+  const w = world(on)
+  w.files.set(`${CACHE}/1.png`, { base64: PNG, mtimeMs: 1_000 })
+  await $.session.start({ cwd: CWD, surface: 'desktop', isInteractive: true })
+  w.box.text = '[Image #1]'
+  await w.clock.advance(250)
+  await $.prompt.submit({ text: '[Image #1]', wait: false, origin: { kind: 'composer' } })
+  await w.clock.settle()
+  expect(w.registered).toEqual([])
+  expect(w.ran).toEqual([])
+  expect([...w.texts.keys()]).toEqual([])
+  const band = await $.ui.mount({ plugin: 'show-and-tell', surface: 'desktop', ...BAND })
   expect(await band.find({ key: 'band-gallery' })).toBeUndefined()
 })
 

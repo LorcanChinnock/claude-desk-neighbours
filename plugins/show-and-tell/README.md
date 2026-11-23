@@ -39,8 +39,11 @@ terminal), the picture shrinks to fit and the footer is hidden so the header, ac
 
 ## Which terminals show pictures
 
+Show & Tell is for the Claude Code terminal. The Claude desktop app and IDE extensions preview pictures
+themselves, so there the plugin stays out of the way: no `/gallery`, no band, and nothing copied.
+
 Pictures only render in terminals that support the kitty graphics protocol, which means Ghostty and kitty. In
-other terminals, in tmux and in the desktop app, the band and gallery show the same thing as text
+other terminals and in tmux, the band and gallery show the same thing as text
 (`📎 Pasted image #1 · 200×120`), and all the buttons still work.
 
 Thumbnails have to be PNGs, so other formats get converted once: with `sips` on macOS and ImageMagick (`magick` or
