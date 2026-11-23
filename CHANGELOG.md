@@ -1,5 +1,12 @@
 # Changelog
 
+## [4.2.0](https://github.com/LorcanChinnock/claude-desk-neighbours/compare/v4.1.0...v4.2.0) (2026-11-23)
+
+
+### Features
+
+* put the desktop buttons in the right-click menu ([#76](https://github.com/LorcanChinnock/claude-desk-neighbours/issues/76)) ([9f84f2e](https://github.com/LorcanChinnock/claude-desk-neighbours/commit/9f84f2ea3310a318bd1f9214269170e4ced881d9))
+
 ## [4.1.0](https://github.com/LorcanChinnock/claude-desk-neighbours/compare/v4.0.1...v4.1.0) (2026-11-23)
 
 
