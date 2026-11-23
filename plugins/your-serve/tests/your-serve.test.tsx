@@ -44,7 +44,7 @@ test('the status row button sits in key order and asks Claude for its questions'
   expect(texts).toEqual([ASK, ASK])
 })
 
-test('on desktop the button sits in the band above the prompt, and the hint line gets none', async ($, on) => {
+test('on desktop the button is a right-click menu row, with none in the hint line or the band', async ($, on) => {
   const texts = sent(on)
   on('ui.render', ($, e) => {
     const { Text } = $.ui.resolve(e)
@@ -64,9 +64,12 @@ test('on desktop the button sits in the band above the prompt, and the hint line
     component: 'AbovePrompt',
     props: { hasSurvey: false, isWorking: false, maxRows: 10, bodyColumns: 100, scroll: { offset: 0, bodyRows: 10 }, view: {} },
   })
-  expect((await band.findAll({ type: 'Button' })).map(b => b.text)).toEqual(['🎾 your serve'])
-  await band.press({ key: 'desk-2-your-serve' })
+  expect(await band.findAll({ type: 'Button' })).toEqual([])
   await band.unmount()
+  const menu = await $.ui.mount({ plugin: 'your-serve', surface: 'desktop', component: 'ContextMenu', props: {} })
+  expect((await menu.findAll({ type: 'Button' })).map(b => b.text)).toEqual(['🎾 your serve'])
+  await menu.press({ key: 'desk-2-your-serve' })
+  await menu.unmount()
   expect(texts).toEqual([ASK])
 })
 

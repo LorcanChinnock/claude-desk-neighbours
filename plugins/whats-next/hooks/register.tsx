@@ -226,16 +226,26 @@ export const register: Register = (on, options) => {
     return done
   })
 
-  // The desktop app does not draw the hint line's row, so there the button joins the band above the prompt, which every
-  // surface draws, beside whichever notice the band is showing.
+  // The desktop app does not draw the hint line's row, and a row of its own in the band above the prompt would stack
+  // with the other neighbours', so there the button is a row in the right-click menu.
+  on('ui.render', { component: 'ContextMenu' }, async ($, e) => {
+    const { Button } = $.ui.resolve(e)
+    const isBusy = await read($, isDrafting)
+    return (
+      <Button
+        key="desk-3-whats-next"
+        label={isBusy ? '⏭️ Writing the briefing…' : LABEL}
+        onPress={() => void whatsNext($).catch(draftFailed($))}
+      />
+    )
+  })
+
   on('ui.render', { component: 'AbovePrompt' }, async ($, e, next) => {
     const below = await next(e)
     const { Box, Text, Button } = $.ui.resolve(e)
-    const isDesktop = e.surface === 'desktop' && !e.props.hasSurvey
     const isReady = await read($, isWaiting)
     const percent = isReady || e.props.hasSurvey ? null : await read($, nudge)
-    if (!isDesktop && !isReady && percent === null) return below
-    const isBusy = isDesktop ? await read($, isDrafting) : false
+    if (!isReady && percent === null) return below
     return (
       <Box flexDirection="column">
         {below}
@@ -252,15 +262,6 @@ export const register: Register = (on, options) => {
             <Button key="nudge-start" plain label="⏭️ Start fresh?" onPress={() => void whatsNext($).catch(draftFailed($))} />
             <Button key="nudge-dismiss" plain dimColor label="Dismiss" onPress={() => void $.state.set(NUDGE, null)} />
           </Box>
-        ) : null}
-        {isDesktop ? (
-          <Button
-            key="desk-3-whats-next"
-            plain
-            dimColor
-            label={isBusy ? '⏭️ writing…' : LABEL}
-            onPress={() => void whatsNext($).catch(draftFailed($))}
-          />
         ) : null}
       </Box>
     )
