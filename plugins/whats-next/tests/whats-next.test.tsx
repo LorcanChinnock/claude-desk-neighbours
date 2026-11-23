@@ -11,6 +11,7 @@ const BAND = {
   component: 'AbovePrompt',
   props: { hasSurvey: false, isWorking: false, maxRows: 10, bodyColumns: 100, scroll: { offset: 0, bodyRows: 10 }, view: {} },
 } as const
+const MENU = { component: 'ContextMenu', props: {} } as const
 const PANE = {
   component: 'Pane',
   requestId: 'whats-next',
@@ -136,7 +137,7 @@ async function turnDone($: Engine): Promise<void> {
 
 /** Drafts from the status-row button and returns the review pane. */
 async function drafted($: Engine, w: World, surface: 'terminal' | 'desktop' = 'terminal') {
-  const hint = await $.ui.mount({ plugin: 'whats-next', surface, ...(surface === 'desktop' ? BAND : HINT) })
+  const hint = await $.ui.mount({ plugin: 'whats-next', surface, ...(surface === 'desktop' ? MENU : HINT) })
   await hint.press({ key: 'desk-3-whats-next' })
   await hint.unmount()
   expect(w.opened).toEqual(['whats-next'])
@@ -160,17 +161,19 @@ test('the status row button sits in key order', async ($, on) => {
   await hint.unmount()
 })
 
-test('on desktop the button sits in the band above the prompt, and the hint line gets none', async ($, on) => {
+test('on desktop the button is a right-click menu row, with none in the hint line or the band', async ($, on) => {
   on('ui.render', ($, e) => {
     const { Text } = $.ui.resolve(e)
     return <Text>? for shortcuts</Text>
   })
-  const hint = await $.ui.mount({ plugin: 'whats-next', surface: 'desktop', ...HINT })
-  expect(await hint.findAll({ type: 'Button' })).toEqual([])
-  await hint.unmount()
-  const band = await $.ui.mount({ plugin: 'whats-next', surface: 'desktop', ...BAND })
-  expect((await band.findAll({ type: 'Button' })).map(b => b.text)).toEqual(['⏭️ whats next'])
-  await band.unmount()
+  for (const site of [HINT, BAND]) {
+    const ui = await $.ui.mount({ plugin: 'whats-next', surface: 'desktop', ...site })
+    expect(await ui.findAll({ type: 'Button' })).toEqual([])
+    await ui.unmount()
+  }
+  const menu = await $.ui.mount({ plugin: 'whats-next', surface: 'desktop', ...MENU })
+  expect((await menu.findAll({ type: 'Button' })).map(b => b.text)).toEqual(['⏭️ whats next'])
+  await menu.unmount()
 })
 
 test('the button drafts a briefing from a fork of the session and opens it for review', async ($, on) => {
