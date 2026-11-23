@@ -1,6 +1,6 @@
 {
   "name": "whats-next",
-  "version": "4.0.1",
+  "version": "4.1.0",
   "description": "⏭️ When a session gets long, writes a self-contained briefing for the next task, lets you review it, and starts it in a fresh context.",
   "author": {
     "name": "Lorcan Chinnock",
