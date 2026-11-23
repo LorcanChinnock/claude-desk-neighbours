@@ -1,5 +1,12 @@
 # Changelog
 
+## [4.2.1](https://github.com/LorcanChinnock/claude-desk-neighbours/compare/v4.2.0...v4.2.1) (2026-11-23)
+
+
+### Bug Fixes
+
+* **show-and-tell:** stand down outside the terminal ([#78](https://github.com/LorcanChinnock/claude-desk-neighbours/issues/78)) ([edf7d61](https://github.com/LorcanChinnock/claude-desk-neighbours/commit/edf7d61360983c81b08572eeccc3cbfa689f8eb4))
+
 ## [4.2.0](https://github.com/LorcanChinnock/claude-desk-neighbours/compare/v4.1.0...v4.2.0) (2026-11-23)
 
 
