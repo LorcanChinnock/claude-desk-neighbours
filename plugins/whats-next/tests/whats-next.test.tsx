@@ -136,7 +136,7 @@ async function turnDone($: Engine): Promise<void> {
 
 /** Drafts from the status-row button and returns the review pane. */
 async function drafted($: Engine, w: World, surface: 'terminal' | 'desktop' = 'terminal') {
-  const hint = await $.ui.mount({ plugin: 'whats-next', surface, ...HINT })
+  const hint = await $.ui.mount({ plugin: 'whats-next', surface, ...(surface === 'desktop' ? BAND : HINT) })
   await hint.press({ key: 'desk-3-whats-next' })
   await hint.unmount()
   expect(w.opened).toEqual(['whats-next'])
@@ -155,11 +155,22 @@ test('the status row button sits in key order', async ($, on) => {
       </Box>
     )
   })
-  for (const surface of ['terminal', 'desktop'] as const) {
-    const hint = await $.ui.mount({ plugin: 'whats-next', surface, ...HINT })
-    expect((await hint.findAll({ type: 'Button' })).map(b => b.text)).toEqual(['🥇 first', '🎾 your serve', '⏭️ whats next', '📎 other'])
-    await hint.unmount()
-  }
+  const hint = await $.ui.mount({ plugin: 'whats-next', surface: 'terminal', ...HINT })
+  expect((await hint.findAll({ type: 'Button' })).map(b => b.text)).toEqual(['🥇 first', '🎾 your serve', '⏭️ whats next', '📎 other'])
+  await hint.unmount()
+})
+
+test('on desktop the button sits in the band above the prompt, and the hint line gets none', async ($, on) => {
+  on('ui.render', ($, e) => {
+    const { Text } = $.ui.resolve(e)
+    return <Text>? for shortcuts</Text>
+  })
+  const hint = await $.ui.mount({ plugin: 'whats-next', surface: 'desktop', ...HINT })
+  expect(await hint.findAll({ type: 'Button' })).toEqual([])
+  await hint.unmount()
+  const band = await $.ui.mount({ plugin: 'whats-next', surface: 'desktop', ...BAND })
+  expect((await band.findAll({ type: 'Button' })).map(b => b.text)).toEqual(['⏭️ whats next'])
+  await band.unmount()
 })
 
 test('the button drafts a briefing from a fork of the session and opens it for review', async ($, on) => {

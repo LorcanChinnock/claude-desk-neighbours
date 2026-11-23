@@ -46,7 +46,22 @@ export const register: Register = on => {
     return { text: '🎾 Over to Claude for its questions' }
   })
 
+  // The desktop app does not draw the hint line's row, so there the button sits in the band above the prompt, which
+  // every surface draws.
+  on('ui.render', { component: 'AbovePrompt' }, async ($, e, next) => {
+    const below = await next(e)
+    if (e.surface !== 'desktop' || e.props.hasSurvey) return below
+    const { Box, Button } = $.ui.resolve(e)
+    return (
+      <Box key="desk-band-your-serve" flexDirection="column">
+        {below}
+        <Button key="desk-2-your-serve" plain dimColor label={LABEL} onPress={() => void serve($)} />
+      </Box>
+    )
+  })
+
   on('ui.render', { component: 'PromptHint' }, async ($, e, next) => {
+    if (e.surface === 'desktop') return next(e)
     const below = await next(e)
     const { Box, Button } = $.ui.resolve(e)
     const mine = <Button key="desk-2-your-serve" plain dimColor label={LABEL} onPress={() => void serve($)} />
