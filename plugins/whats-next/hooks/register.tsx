@@ -226,38 +226,48 @@ export const register: Register = (on, options) => {
     return done
   })
 
+  // The desktop app does not draw the hint line's row, so there the button joins the band above the prompt, which every
+  // surface draws, beside whichever notice the band is showing.
   on('ui.render', { component: 'AbovePrompt' }, async ($, e, next) => {
-    if (await read($, isWaiting)) {
-      const below = await next(e)
-      const { Box, Text, Button } = $.ui.resolve(e)
-      return (
-        <Box flexDirection="column">
-          {below}
+    const below = await next(e)
+    const { Box, Text, Button } = $.ui.resolve(e)
+    const isDesktop = e.surface === 'desktop' && !e.props.hasSurvey
+    const isReady = await read($, isWaiting)
+    const percent = isReady || e.props.hasSurvey ? null : await read($, nudge)
+    if (!isDesktop && !isReady && percent === null) return below
+    const isBusy = isDesktop ? await read($, isDrafting) : false
+    return (
+      <Box flexDirection="column">
+        {below}
+        {isReady ? (
           <Box flexDirection="row" columnGap={2}>
             <Text>⏭️ The briefing is ready.</Text>
             <Button key="ready-open" plain label="Open" onPress={() => void open($)} />
             <Button key="ready-discard" plain dimColor label="Discard" onPress={() => void cancel($)} />
           </Box>
-        </Box>
-      )
-    }
-    const percent = await read($, nudge)
-    if (percent === null || e.props.hasSurvey) return next(e)
-    const below = await next(e)
-    const { Box, Text, Button } = $.ui.resolve(e)
-    return (
-      <Box flexDirection="column">
-        {below}
-        <Box flexDirection="row" columnGap={2}>
-          <Text>Context is {percent}% full.</Text>
-          <Button key="nudge-start" plain label="⏭️ Start fresh?" onPress={() => void whatsNext($).catch(draftFailed($))} />
-          <Button key="nudge-dismiss" plain dimColor label="Dismiss" onPress={() => void $.state.set(NUDGE, null)} />
-        </Box>
+        ) : null}
+        {percent !== null ? (
+          <Box flexDirection="row" columnGap={2}>
+            <Text>Context is {percent}% full.</Text>
+            <Button key="nudge-start" plain label="⏭️ Start fresh?" onPress={() => void whatsNext($).catch(draftFailed($))} />
+            <Button key="nudge-dismiss" plain dimColor label="Dismiss" onPress={() => void $.state.set(NUDGE, null)} />
+          </Box>
+        ) : null}
+        {isDesktop ? (
+          <Button
+            key="desk-3-whats-next"
+            plain
+            dimColor
+            label={isBusy ? '⏭️ writing…' : LABEL}
+            onPress={() => void whatsNext($).catch(draftFailed($))}
+          />
+        ) : null}
       </Box>
     )
   })
 
   on('ui.render', { component: 'PromptHint' }, async ($, e, next) => {
+    if (e.surface === 'desktop') return next(e)
     const below = await next(e)
     const isBusy = await read($, isDrafting)
     const { Box, Button } = $.ui.resolve(e)

@@ -28,7 +28,7 @@ test('the status row button sits in key order and asks Claude to reflect', async
       </Box>
     )
   })
-  for (const surface of ['terminal', 'desktop'] as const) {
+  for (const surface of ['terminal'] as const) {
     for (const isWorking of [false, true]) {
       const hint = await $.ui.mount({
         plugin: 'reflect',
@@ -41,7 +41,33 @@ test('the status row button sits in key order and asks Claude to reflect', async
       await hint.unmount()
     }
   }
-  expect(texts).toEqual([ASK, ASK, ASK, ASK])
+  expect(texts).toEqual([ASK, ASK])
+})
+
+test('on desktop the button sits in the band above the prompt, and the hint line gets none', async ($, on) => {
+  const texts = sent(on)
+  on('ui.render', ($, e) => {
+    const { Text } = $.ui.resolve(e)
+    return <Text>? for shortcuts</Text>
+  })
+  const hint = await $.ui.mount({
+    plugin: 'reflect',
+    surface: 'desktop',
+    component: 'PromptHint',
+    props: { isDraft: false, isWorking: false, hint: '? for shortcuts' },
+  })
+  expect(await hint.findAll({ type: 'Button' })).toEqual([])
+  await hint.unmount()
+  const band = await $.ui.mount({
+    plugin: 'reflect',
+    surface: 'desktop',
+    component: 'AbovePrompt',
+    props: { hasSurvey: false, isWorking: false, maxRows: 10, bodyColumns: 100, scroll: { offset: 0, bodyRows: 10 }, view: {} },
+  })
+  expect((await band.findAll({ type: 'Button' })).map(b => b.text)).toEqual(['🪞 reflect'])
+  await band.press({ key: 'desk-6-reflect' })
+  await band.unmount()
+  expect(texts).toEqual([ASK])
 })
 
 test('the button joins a plain hint line when no other neighbour has drawn the row', async ($, on) => {
